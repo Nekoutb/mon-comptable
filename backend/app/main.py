@@ -14,10 +14,10 @@ from sqlalchemy.orm import Session
 from .adapters import erp_adapter, ocr_adapter
 from .config import settings
 from .database import Base, engine, get_db
-from .models import AccountingProposal, ApprovalAction, AuditLog, BankStatement, BankStatementLine, Document, Invoice, InvoiceStatus, Journal, LegalEntity, StatementStatus, Supplier, User
+from .models import AccountingProposal, ApprovalAction, AuditLog, BackgroundJob, BankStatement, BankStatementLine, Document, InboundEmail, Invoice, InvoiceStatus, Journal, LegalEntity, Notification, StatementStatus, Supplier, Tenant, User
 from .schemas import ApprovalInput, InvoiceOut, InvoiceUpdate, LoginRequest, RejectInput, StatementOut, TokenResponse
 from .security import create_token, current_user, roles, verify_password
-from .services import audit, duplicate_check, generate_proposal, match_supplier, normalize_invoice_number, parse_bank_csv, post_invoice
+from .services import audit, duplicate_check, generate_proposal, match_supplier, normalize_invoice_number, parse_bank_content, post_invoice
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -187,8 +187,10 @@ async def upload_statement(file: UploadFile = File(...), entity_id: str | None =
     existing = db.scalar(select(BankStatement).where(BankStatement.tenant_id == user.tenant_id, BankStatement.checksum == doc.sha256))
     if existing: raise HTTPException(409, "Duplicate bank statement")
     if journal_id and not db.scalar(select(Journal).where(Journal.id == journal_id, Journal.tenant_id == user.tenant_id, Journal.entity_id == entity.id, Journal.kind == "bank")): raise HTTPException(422, "Invalid bank journal")
-    statement = BankStatement(tenant_id=user.tenant_id, entity_id=entity.id, document_id=doc.id, journal_id=journal_id, reference=os.path.splitext(doc.filename)[0], format="csv", opening_balance=opening_balance, closing_balance=closing_balance, checksum=doc.sha256, created_by=user.id)
-    db.add(statement); db.flush(); parse_bank_csv(db, statement, content, user); db.commit(); db.refresh(statement); return statement
+    extension = os.path.splitext(doc.filename)[1].lower()
+    fmt = "camt053" if extension in {".xml", ".camt"} else "mt940" if extension in {".mt940", ".sta"} else "csv"
+    statement = BankStatement(tenant_id=user.tenant_id, entity_id=entity.id, document_id=doc.id, journal_id=journal_id, reference=os.path.splitext(doc.filename)[0], format=fmt, opening_balance=opening_balance, closing_balance=closing_balance, checksum=doc.sha256, created_by=user.id)
+    db.add(statement); db.flush(); parse_bank_content(db, statement, content, user); db.commit(); db.refresh(statement); return statement
 
 
 @app.get("/api/v1/bank-statements", response_model=list[StatementOut])
@@ -220,3 +222,35 @@ def dashboard(user: User = Depends(current_user), db: Session = Depends(get_db))
     invoice_counts = dict(db.execute(select(Invoice.status, func.count()).where(Invoice.tenant_id == user.tenant_id).group_by(Invoice.status)).all())
     statement_counts = dict(db.execute(select(BankStatement.status, func.count()).where(BankStatement.tenant_id == user.tenant_id).group_by(BankStatement.status)).all())
     return {"accounts_payable": {str(k.value): v for k, v in invoice_counts.items()}, "treasury": {str(k.value): v for k, v in statement_counts.items()}, "integrations": {"erp": erp_adapter.health_check(), "ocr": {"provider": "mock", "external_connection": False}}}
+
+
+@app.post("/api/v1/inbound-email/webhook")
+def inbound_email(payload: dict, x_webhook_secret: str = Header(..., alias="X-Webhook-Secret"), db: Session = Depends(get_db)):
+    if not __import__("secrets").compare_digest(x_webhook_secret, settings.inbound_webhook_secret):
+        raise HTTPException(401, "Invalid webhook signature")
+    recipient = str(payload.get("recipient", "")); message_id = str(payload.get("message_id", ""))
+    if not recipient or not message_id: raise HTTPException(422, "recipient and message_id are required")
+    local = recipient.split("@", 1)[0]; tenant_code = local.split("+", 1)[1] if "+" in local else ""
+    tenant = db.scalar(select(Tenant).where(Tenant.code == tenant_code, Tenant.active.is_(True)))
+    if not tenant: raise HTTPException(404, "Inbound tenant address not recognized")
+    existing = db.scalar(select(InboundEmail).where(InboundEmail.tenant_id == tenant.id, InboundEmail.message_id == message_id))
+    if existing: return {"id": existing.id, "status": existing.status, "duplicate_delivery": True}
+    attachments = payload.get("attachments", [])
+    unsafe = [a for a in attachments if str(a.get("filename", "")).lower().endswith((".exe", ".js", ".bat", ".cmd", ".ps1"))]
+    email = InboundEmail(tenant_id=tenant.id, message_id=message_id, sender=str(payload.get("sender", "")), recipient=recipient, subject=str(payload.get("subject", ""))[:500], attachment_count=len(attachments), status="quarantined" if unsafe else "received", error="Unsafe attachment type" if unsafe else None)
+    db.add(email); db.flush(); db.add(Notification(tenant_id=tenant.id, kind="invoice_email_received", title="New invoice email", message=f"Invoice email received from {email.sender}", record_type="inbound_email", record_id=email.id)); db.commit(); return {"id": email.id, "status": email.status, "mocked_provider": True}
+
+
+@app.get("/api/v1/inbound-email/exceptions")
+def email_exceptions(user: User = Depends(roles("accountant", "tenant_admin")), db: Session = Depends(get_db)):
+    return db.scalars(select(InboundEmail).where(InboundEmail.tenant_id == user.tenant_id, InboundEmail.status.in_(["quarantined", "failed", "unmatched"]))).all()
+
+
+@app.get("/api/v1/notifications")
+def notifications(limit: int = 50, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return db.scalars(select(Notification).where(Notification.tenant_id == user.tenant_id).order_by(Notification.created_at.desc()).limit(min(max(limit, 1), 100))).all()
+
+
+@app.get("/api/v1/admin/jobs")
+def jobs(limit: int = 50, user: User = Depends(roles("tenant_admin")), db: Session = Depends(get_db)):
+    return db.scalars(select(BackgroundJob).where(BackgroundJob.tenant_id == user.tenant_id).order_by(BackgroundJob.created_at.desc()).limit(min(max(limit, 1), 100))).all()

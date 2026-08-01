@@ -256,3 +256,47 @@ class AuditLog(Base):
     correlation_id: Mapped[str] = mapped_column(String(36), index=True)
     origin: Mapped[str] = mapped_column(String(20), default="human")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class InboundEmail(Base):
+    __tablename__ = "inbound_emails"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
+    message_id: Mapped[str] = mapped_column(String(255))
+    sender: Mapped[str] = mapped_column(String(255))
+    recipient: Mapped[str] = mapped_column(String(255))
+    subject: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30), default="received", index=True)
+    attachment_count: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("tenant_id", "message_id"),)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(50))
+    title: Mapped[str] = mapped_column(String(180))
+    message: Mapped[str] = mapped_column(Text)
+    record_type: Mapped[str | None] = mapped_column(String(50))
+    record_id: Mapped[str | None] = mapped_column(String(36))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(60), index=True)
+    record_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    error: Mapped[str | None] = mapped_column(Text)
+    correlation_id: Mapped[str] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime)

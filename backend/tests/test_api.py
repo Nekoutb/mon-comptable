@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.seed import seed
 from app.services import normalize_invoice_number
+from app.parsers import parse_camt053, parse_mt940
 
 
 client = TestClient(app)
@@ -59,3 +60,20 @@ def test_role_enforcement_blocks_accountant_approval():
         json={"comment": "Not authorized"},
     )
     assert response.status_code == 403
+
+
+def test_mt940_parser():
+    rows = parse_mt940(b":20:REF\n:61:2608010801D1250,00NTRFABC123\n:86:Supplier payment\n")
+    assert rows[0]["amount"] == Decimal("-1250.00")
+    assert rows[0]["description"] == "Supplier payment"
+
+
+def test_camt053_parser():
+    xml = b"""<?xml version='1.0'?><Document><BkToCstmrStmt><Stmt><Ntry><Amt>500.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><BookgDt><Dt>2026-08-01</Dt></BookgDt><AcctSvcrRef>R1</AcctSvcrRef><AddtlNtryInf>Transfer</AddtlNtryInf></Ntry></Stmt></BkToCstmrStmt></Document>"""
+    rows = parse_camt053(xml)
+    assert rows[0]["amount"] == Decimal("500.00")
+
+
+def test_inbound_email_rejects_bad_secret():
+    response = client.post("/api/v1/inbound-email/webhook", headers={"X-Webhook-Secret": "wrong"}, json={"recipient": "invoices+akwa@example.com", "message_id": "msg-1"})
+    assert response.status_code == 401

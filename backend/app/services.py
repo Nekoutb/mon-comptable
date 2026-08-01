@@ -1,6 +1,4 @@
-import csv
 import hashlib
-import io
 import re
 import uuid
 from datetime import date
@@ -12,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from .adapters import erp_adapter
 from .models import Account, AccountingProposal, AuditLog, BankStatement, BankStatementLine, ERPPosting, Invoice, InvoiceStatus, Journal, StatementStatus, Supplier, TaxCode, User
+from .parsers import parse_statement
 
 
 def audit(db: Session, user: User, action: str, record_type: str, record_id: str, before=None, after=None, reason=None, origin="human"):
@@ -95,18 +94,18 @@ def post_invoice(db: Session, invoice: Invoice, user: User, key: str, mode: str)
     return posting
 
 
-def parse_bank_csv(db: Session, statement: BankStatement, content: bytes, user: User) -> int:
-    reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig")))
-    required = {"date", "description", "amount"}
-    if not reader.fieldnames or not required.issubset({x.strip().lower() for x in reader.fieldnames}):
-        raise HTTPException(422, "CSV requires date, description and amount columns")
+def parse_bank_content(db: Session, statement: BankStatement, content: bytes, user: User) -> int:
+    try:
+        rows = parse_statement(content, statement.format)
+    except (ValueError, UnicodeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
     count = 0
-    for row in reader:
-        tx_date = date.fromisoformat(row["date"])
-        amount = Decimal(row["amount"].replace(" ", "").replace(",", "."))
+    for row in rows:
+        tx_date = row["date"]
+        amount = row["amount"]
         digest = hashlib.sha256(f"{user.tenant_id}|{tx_date}|{row['description']}|{amount}".encode()).hexdigest()
         duplicate = db.scalar(select(BankStatementLine).where(BankStatementLine.tenant_id == user.tenant_id, BankStatementLine.line_hash == digest))
-        db.add(BankStatementLine(tenant_id=user.tenant_id, statement_id=statement.id, transaction_date=tx_date, description=row["description"], reference=row.get("reference"), amount=amount, line_hash=digest, status="duplicate" if duplicate else "unallocated"))
+        db.add(BankStatementLine(tenant_id=user.tenant_id, statement_id=statement.id, transaction_date=tx_date, value_date=row.get("value_date"), description=row["description"], reference=row.get("reference"), amount=amount, line_hash=digest, status="duplicate" if duplicate else "unallocated"))
         count += 1
     statement.status = StatementStatus.PARSED
     audit(db, user, "bank_statement_parsed", "bank_statement", statement.id, after={"lines": count}, origin="automation")
