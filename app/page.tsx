@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./modules.css";
+import { getApiHealth, type ApiMode } from "./lib/api";
 
 type View = "overview" | "invoices" | "treasury" | "integrations";
 
@@ -24,9 +25,16 @@ export default function Home() {
   const [lang, setLang] = useState<"FR" | "EN">("FR");
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
+  const [apiMode, setApiMode] = useState<ApiMode>("checking");
   const filtered = useMemo(() => invoices.filter((i) => `${i.id} ${i.supplier}`.toLowerCase().includes(query.toLowerCase())), [query]);
 
   const flash = (message: string) => { setNotice(message); setTimeout(() => setNotice(""), 2800); };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getApiHealth(controller.signal).then((health) => setApiMode(health ? "connected" : "demo")).catch(() => setApiMode("demo"));
+    return () => controller.abort();
+  }, []);
 
   return (
     <main className="app-shell">
@@ -54,7 +62,7 @@ export default function Home() {
         {view === "overview" && <Overview setView={setView} flash={flash} />}
         {view === "invoices" && <Invoices items={filtered} flash={flash} />}
         {view === "treasury" && <Treasury flash={flash} />}
-        {view === "integrations" && <Integrations flash={flash} />}
+        {view === "integrations" && <Integrations flash={flash} apiMode={apiMode} />}
       </section>
       {notice && <div className="toast"><span>✓</span>{notice}</div>}
     </main>
@@ -80,4 +88,4 @@ function Invoices({ items, flash }: {items: typeof invoices; flash:(s:string)=>v
 
 function Treasury({ flash }: {flash:(s:string)=>void}) { return <div className="content inner"><div className="page-heading"><div><p>TRÉSORERIE</p><h1>Relevés bancaires</h1><p className="subtitle">Importez et validez vos opérations avant transfert vers l’ERP.</p></div><button className="primary" onClick={()=>flash("Import prêt — formats CSV, MT940 et CAMT.053")}>＋ Importer un relevé</button></div><div className="bank-cards"><article className="bank-card featured"><div><span className="bank-logo">A</span><p><b>Afriland First Bank</b><small>Compte courant · •••• 2841</small></p></div><h3>18 245 900 <small>XAF</small></h3><footer><span>Dernier import : 31 juil.</span><em>À jour</em></footer></article><article className="bank-card"><div><span className="bank-logo blue">S</span><p><b>Société Générale</b><small>Compte dépenses · •••• 6712</small></p></div><h3>4 812 640 <small>XAF</small></h3><footer><span>Dernier import : 29 juil.</span><em className="warning">2 jours</em></footer></article></div><section className="panel"><div className="panel-head"><div><h2>Imports récents</h2><p>Suivi des validations et transferts ERP</p></div></div><div className="statement-row"><span className="file">CSV</span><div><b>AFB_JUILLET_2026.csv</b><small>42 opérations · Journal BQ-AFB</small></div><span>31 juil. 2026</span><b>12 847 500 XAF</b><em className="status green">● Importé</em></div><div className="statement-row"><span className="file">MT</span><div><b>SGC_2026_W31.mt940</b><small>18 opérations · Journal BQ-SGC</small></div><span>29 juil. 2026</span><b>3 210 400 XAF</b><em className="status amber">● À valider</em></div></section></div> }
 
-function Integrations({ flash }: {flash:(s:string)=>void}) { return <div className="content inner"><div className="page-heading"><div><p>ADMINISTRATION</p><h1>Intégrations</h1><p className="subtitle">État des services et des synchronisations de données.</p></div><button className="outline" onClick={()=>flash("Tous les contrôles de santé ont été relancés")}>↻ Tout vérifier</button></div><div className="integration-grid">{[["ERP","ERP SYSCOHADA (démo)","12 min"],["OCR","Moteur OCR simulé","Opérationnel"],["ST","Stockage documentaire","Opérationnel"],["✉","Réception e-mail","Mode test"]].map((x,i)=><article className="integration" key={x[1]}><span>{x[0]}</span><div><b>{x[1]}</b><small>Dernière activité : {x[2]}</small></div><em className={i===3?"test":""}>● {i===3?"Test":"Connecté"}</em><button onClick={()=>flash(`${x[1]} : connexion vérifiée`)}>Vérifier</button></article>)}</div><div className="mock-banner"><span>i</span><div><b>Environnement de démonstration sécurisé</b><p>Les adaptateurs ERP, OCR, e-mail et stockage utilisent actuellement des réponses simulées. Aucune connexion externe n’est présentée comme active.</p></div></div></div> }
+function Integrations({ flash, apiMode }: {flash:(s:string)=>void;apiMode:ApiMode}) { const connected=apiMode==="connected"; return <div className="content inner"><div className="page-heading"><div><p>ADMINISTRATION</p><h1>Intégrations</h1><p className="subtitle">État des services et des synchronisations de données.</p></div><button className="outline" onClick={()=>flash(connected?"API vérifiée — services disponibles":"Mode démonstration — aucune API externe configurée")}>↻ Tout vérifier</button></div><div className="integration-grid">{[["API",connected?"Mon Comptable API":"API locale non configurée",connected?"Opérationnelle":"Mode démo"],["ERP","ERP SYSCOHADA (mock)","Simulé"],["OCR","Moteur OCR mock","Simulé"],["✉","Réception e-mail","Mode test"]].map((x,i)=><article className="integration" key={x[1]}><span>{x[0]}</span><div><b>{x[1]}</b><small>État : {x[2]}</small></div><em className={i>0||!connected?"test":""}>● {i===0&&connected?"Connecté":"Test"}</em><button onClick={()=>flash(`${x[1]} : ${i===0&&connected?"connexion active":"adaptateur de démonstration"}`)}>Vérifier</button></article>)}</div><div className="mock-banner"><span>i</span><div><b>{connected?"API connectée — fournisseurs externes simulés":"Environnement de démonstration sécurisé"}</b><p>Les adaptateurs ERP, OCR, e-mail et stockage utilisent actuellement des réponses simulées. Aucune connexion externe n’est présentée comme active.</p></div></div></div> }
