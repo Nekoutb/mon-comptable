@@ -9,21 +9,23 @@ async function render() {
   return worker.fetch(new Request("http://localhost/", { headers: { accept: "text/html" } }), { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } }, { waitUntil() {}, passThroughOnException() {} });
 }
 
-test("server renders Mon Comptable product metadata", async () => {
+test("server renders bilingual product metadata with English as the default", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Mon Comptable/);
-  assert.match(html, /Assistant comptable IA/);
+  assert.match(html, /My Accountant/);
+  assert.match(html, /AI accounting team/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
-test("keeps Accounts Payable and Treasury as separate modules", async () => {
+test("keeps all five accounting agents as separate modules", async () => {
+  const i18n = await readFile(new URL("../app/lib/i18n.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /Accounts Payable/);
-  assert.match(page, /Treasury/);
-  assert.match(page, /setView\("invoices"\)/);
-  assert.match(page, /setView\("treasury"\)/);
+  for (const name of ["AP Accountant", "Treasury Accountant", "Fixed Assets Accountant", "General Ledger Accountant", "Tax Accountant"])
+    assert.match(i18n, new RegExp(name));
+  for (const id of ["ap", "treasury", "assets", "gl", "tax"])
+    assert.match(page, new RegExp(`id:\"${id}\"`));
 });
 
 test("includes a typed API boundary", async () => {
