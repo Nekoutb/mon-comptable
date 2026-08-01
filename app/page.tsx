@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import "./modules.css";
 
 type View = "overview" | "invoices" | "treasury" | "integrations";
 
@@ -12,8 +13,8 @@ const invoices = [
 ];
 
 const nav: { id: View; label: string; icon: string }[] = [
-  { id: "overview", label: "Vue d’ensemble", icon: "⌂" },
-  { id: "invoices", label: "Factures fournisseurs", icon: "▤" },
+  { id: "overview", label: "Choisir un module", icon: "⌂" },
+  { id: "invoices", label: "Accounts Payable", icon: "▤" },
   { id: "treasury", label: "Trésorerie", icon: "⇄" },
   { id: "integrations", label: "Intégrations", icon: "⌁" },
 ];
@@ -33,7 +34,7 @@ export default function Home() {
         <div className="brand"><span className="brand-mark">M</span><span><b>Mon Comptable</b><small>Assistant comptable IA</small></span></div>
         <div className="company-switch"><span className="company-avatar">AK</span><span><b>Akwa Consulting</b><small>Entité principale</small></span><span className="chevron">⌄</span></div>
         <nav>
-          <p className="nav-label">ESPACE DE TRAVAIL</p>
+          <p className="nav-label">MODULES</p>
           {nav.map((item) => <button key={item.id} className={view === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><span>{item.icon}</span>{item.label}{item.id === "invoices" && <em>8</em>}</button>)}
           <p className="nav-label">GESTION</p>
           <button className="nav-item" onClick={() => flash("Centre de contrôle ouvert en mode démonstration")}><span>✓</span>Approbations<em>3</em></button>
@@ -60,21 +61,14 @@ export default function Home() {
   );
 }
 
-function Overview({ setView, flash }: { setView: (v: View) => void; flash: (s: string) => void }) {
+function Overview({ setView }: { setView: (v: View) => void; flash: (s: string) => void }) {
   return <div className="content">
-    <div className="page-heading"><div><p>VENDREDI 1 AOÛT</p><h1>Bonjour Nadia, <span>tout est sous contrôle.</span></h1><p className="subtitle">Voici ce qui mérite votre attention aujourd’hui.</p></div><button className="primary" onClick={() => flash("Zone de dépôt prête — PDF, JPG, PNG ou TIFF")}>＋ Importer une facture</button></div>
-    <section className="attention-card"><div className="attention-copy"><span className="spark">✦</span><div><h2>Votre priorité du jour</h2><p><b>3 factures</b> attendent votre approbation pour un total de <b>2 134 250 XAF</b>.</p></div></div><button onClick={() => setView("invoices")}>Examiner maintenant <span>→</span></button></section>
-    <div className="metrics">
-      <Metric label="À traiter" value="8" detail="2 nouvelles aujourd’hui" tone="orange" icon="▤" />
-      <Metric label="À approuver" value="3" detail="2 134 250 XAF" tone="purple" icon="✓" />
-      <Metric label="Prêtes à comptabiliser" value="5" detail="4 821 700 XAF" tone="blue" icon="↗" />
-      <Metric label="Comptabilisées ce mois" value="127" detail="+18 % vs juillet" tone="green" icon="●" />
+    <div className="module-heading"><p>MON COMPTABLE</p><h1>Bonjour Nadia. Quel module souhaitez-vous ouvrir ?</h1><span>Chaque espace possède ses propres processus, contrôles et tableaux de bord.</span></div>
+    <div className="module-grid">
+      <button className="module-card ap" onClick={() => setView("invoices")}><div className="module-top"><span className="module-icon">▤</span><em>MODULE 01</em></div><div><h2>Accounts Payable</h2><p>Gérez le cycle complet des factures fournisseurs, de la réception à la comptabilisation ERP.</p></div><div className="module-stats"><span><b>8</b><small>À traiter</small></span><span><b>3</b><small>À approuver</small></span><span><b>5</b><small>Prêtes</small></span></div><footer><span>Ouvrir Accounts Payable</span><b>→</b></footer></button>
+      <button className="module-card cash" onClick={() => setView("treasury")}><div className="module-top"><span className="module-icon">⇄</span><em>MODULE 02</em></div><div><h2>Treasury</h2><p>Importez, validez et transférez les relevés et transactions bancaires vers votre ERP.</p></div><div className="module-stats"><span><b>2</b><small>Comptes</small></span><span><b>1</b><small>À valider</small></span><span><b>60</b><small>Opérations</small></span></div><footer><span>Ouvrir Treasury</span><b>→</b></footer></button>
     </div>
-    <div className="main-grid">
-      <section className="panel recent"><div className="panel-head"><div><h2>Factures récentes</h2><p>Derniers documents reçus et traités</p></div><button onClick={() => setView("invoices")}>Voir toutes <span>→</span></button></div><InvoiceTable items={invoices.slice(0, 4)} /></section>
-      <section className="panel activity"><div className="panel-head"><div><h2>Activité</h2><p>7 derniers jours</p></div><button>•••</button></div><div className="chart"><div className="chart-total"><b>34</b><span>factures traitées</span></div>{[42,68,55,86,72,93,61].map((h, i) => <div className="bar-wrap" key={i}><div className={i === 5 ? "bar today" : "bar"} style={{height:`${h}%`}}/><span>{["L","M","M","J","V","S","D"][i]}</span></div>)}</div><div className="automation"><div><span className="ring">87<small>%</small></span><p><b>Taux d’automatisation</b><small>11 factures sans correction</small></p></div><em>+6 %</em></div></section>
-    </div>
-    <section className="treasury-strip"><div className="bank-icon">▥</div><div><h3>Trésorerie à jour</h3><p>Dernier relevé importé le 31 juillet · 42 opérations</p></div><div className="balance"><small>Solde rapproché</small><b>18 245 900 XAF</b></div><button onClick={() => setView("treasury")}>Voir la trésorerie →</button></section>
+    <section className="module-security"><span>✓</span><div><b>Deux modules, un même niveau de contrôle</b><p>Isolation des données, droits par rôle, traçabilité et validation humaine restent actifs dans chaque espace.</p></div><button onClick={() => setView("integrations")}>État des intégrations →</button></section>
   </div>;
 }
 
