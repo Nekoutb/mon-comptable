@@ -170,10 +170,10 @@ def reject(invoice_id: str, payload: RejectInput, user: User = Depends(roles("ap
 
 @app.post("/api/v1/invoices/{invoice_id}/{operation}")
 def erp_invoice(invoice_id: str, operation: str, idempotency_key: str = Header(..., alias="Idempotency-Key"), user: User = Depends(roles("poster", "tenant_admin")), db: Session = Depends(get_db)):
-    if operation not in {"record-draft", "post"}: raise HTTPException(404, "Unsupported operation")
+    if operation != "record-draft": raise HTTPException(403, "Direct ERP posting is disabled; create a draft for manual posting")
     invoice = db.scalar(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == user.tenant_id))
     if not invoice: raise HTTPException(404, "Invoice not found")
-    result = post_invoice(db, invoice, user, idempotency_key, "draft" if operation == "record-draft" else "post"); db.commit(); return {"status": result.status, "external_reference": result.external_reference, "mocked": True}
+    result = post_invoice(db, invoice, user, idempotency_key, "draft"); db.commit(); return {"status": result.status, "external_reference": result.external_reference, "posting_required": True, "mocked": True}
 
 
 @app.get("/api/v1/invoices/{invoice_id}/audit-log")
@@ -210,11 +210,11 @@ def validate_statement(statement_id: str, user: User = Depends(roles("accountant
     statement.status = StatementStatus.VALIDATED; audit(db, user, "bank_statement_validated", "bank_statement", statement.id, after={"line_total": str(line_total)}); db.commit(); return {"status": statement.status, "line_total": line_total}
 
 
-@app.post("/api/v1/bank-statements/{statement_id}/post")
-def post_statement(statement_id: str, idempotency_key: str = Header(..., alias="Idempotency-Key"), user: User = Depends(roles("poster", "tenant_admin")), db: Session = Depends(get_db)):
+@app.post("/api/v1/bank-statements/{statement_id}/record-draft")
+def draft_statement(statement_id: str, idempotency_key: str = Header(..., alias="Idempotency-Key"), user: User = Depends(roles("poster", "tenant_admin")), db: Session = Depends(get_db)):
     statement = db.scalar(select(BankStatement).where(BankStatement.id == statement_id, BankStatement.tenant_id == user.tenant_id))
     if not statement or statement.status != StatementStatus.VALIDATED: raise HTTPException(409, "Validated statement required")
-    response = erp_adapter.post_bank_statement({"statement_id": statement.id}, idempotency_key); statement.status = StatementStatus.IMPORTED; audit(db, user, "bank_statement_posted", "bank_statement", statement.id, after=response, origin="automation"); db.commit(); return response
+    response = erp_adapter.post_bank_statement({"statement_id": statement.id, "posting_status": "draft"}, idempotency_key); statement.status = StatementStatus.IMPORTED; audit(db, user, "bank_statement_draft_created", "bank_statement", statement.id, after=response, origin="automation"); db.commit(); return {**response, "posting_required": True}
 
 
 @app.get("/api/v1/dashboard")

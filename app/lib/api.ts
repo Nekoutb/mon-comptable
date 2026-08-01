@@ -33,4 +33,10 @@ export class AccountingApi {
   invoices() { return this.request<Array<Record<string, unknown>>>("/invoices"); }
   statements() { return this.request<Array<Record<string, unknown>>>("/bank-statements"); }
   dashboard() { return this.request<Record<string, unknown>>("/dashboard"); }
+  createInvoiceDraft(invoiceId: string, idempotencyKey: string) {
+    return this.request<{ status: string; external_reference: string }>(`/invoices/${invoiceId}/record-draft`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+    });
+  }
 }

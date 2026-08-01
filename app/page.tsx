@@ -1,91 +1,77 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import "./modules.css";
-import { getApiHealth, type ApiMode } from "./lib/api";
+import "./agents.css";
 
-type View = "overview" | "invoices" | "treasury" | "integrations";
+type Lang = "fr" | "en";
+type AgentId = "ap" | "treasury" | "assets" | "gl" | "tax";
+type View = "overview" | AgentId | "workflow" | "integrations";
 
-const invoices = [
-  { id: "FAC-2026-0842", supplier: "Africa Office SARL", date: "30 juil. 2026", amount: "1 428 750", status: "À approuver", tone: "amber", confidence: 96 },
-  { id: "FAC-2026-0841", supplier: "CamTel Business", date: "29 juil. 2026", amount: "486 000", status: "Prête à comptabiliser", tone: "blue", confidence: 98 },
-  { id: "FAC-2026-0839", supplier: "Clean & Care Services", date: "29 juil. 2026", amount: "219 500", status: "À vérifier", tone: "violet", confidence: 74 },
-  { id: "FAC-2026-0838", supplier: "Bureau Plus SA", date: "28 juil. 2026", amount: "842 300", status: "Comptabilisée", tone: "green", confidence: 99 },
+const copy = {
+  fr: {
+    product: "Mon Comptable", subtitle: "Équipe comptable IA", modules: "AGENTS COMPTABLES", control: "PILOTAGE",
+    overview: "Vue d’ensemble", workflow: "Centre des écritures", integrations: "Connecteur ERP", approvals: "Approbations",
+    hello: "Bonjour Nadia. Votre équipe comptable est prête.", intro: "Cinq agents spécialisés collaborent sous contrôle humain, selon le SYSCOHADA révisé et le CGI Cameroun 2025.",
+    open: "Ouvrir l’agent", tasks: "À traiter", ready: "Prêtes", exceptions: "Exceptions", recent: "Activité inter-agents",
+    search: "Rechercher une pièce, un compte, une écriture…", compliance: "Cadre de conformité actif", complianceText: "Chaque proposition conserve ses sources, hypothèses, contrôles et approbations. Aucun agent ne comptabilise directement dans l’ERP.",
+    queue: "File de travail", mission: "Mission et contrôles", evidence: "Références appliquées", journal: "Écriture proposée", submit: "Soumettre le brouillon à l’ERP", debit: "Débit", credit: "Crédit", account: "Compte", label: "Libellé",
+    connector: "Configuration du connecteur ERP", connectorText: "Testez l’échange avec un environnement sandbox. Les écritures sont créées en brouillon et restent à comptabiliser manuellement.",
+    endpoint: "URL de l’API", auth: "Mode d’authentification", token: "Jeton de test", test: "Tester la connexion", save: "Enregistrer", testMode: "Utiliser le simulateur intégré", connected: "Connexion de test réussie", draft: "Brouillon ERP créé : ERP-DR-2026-0184", language: "English",
+  },
+  en: {
+    product: "My Accountant", subtitle: "AI accounting team", modules: "ACCOUNTING AGENTS", control: "CONTROL CENTRE",
+    overview: "Overview", workflow: "Journal centre", integrations: "ERP connector", approvals: "Approvals",
+    hello: "Hello Nadia. Your accounting team is ready.", intro: "Five specialised agents collaborate under human control, guided by revised SYSCOHADA and the Cameroon 2025 Tax Code.",
+    open: "Open agent", tasks: "To process", ready: "Ready", exceptions: "Exceptions", recent: "Cross-agent activity",
+    search: "Search a document, account or journal…", compliance: "Compliance framework active", complianceText: "Every proposal retains its sources, assumptions, controls and approvals. No agent posts directly to the ERP.",
+    queue: "Work queue", mission: "Purpose and controls", evidence: "Applied references", journal: "Proposed journal", submit: "Submit draft to ERP", debit: "Debit", credit: "Credit", account: "Account", label: "Description",
+    connector: "ERP connector configuration", connectorText: "Test the exchange against a sandbox. Journals are created as drafts and remain subject to manual posting.",
+    endpoint: "API URL", auth: "Authentication method", token: "Test token", test: "Test connection", save: "Save", testMode: "Use built-in simulator", connected: "Test connection successful", draft: "ERP draft created: ERP-DR-2026-0184", language: "Français",
+  },
+};
+
+const agents: Array<{id:AgentId; icon:string; color:string; fr:string; en:string; frDesc:string; enDesc:string; count:number}> = [
+  {id:"ap",icon:"AP",color:"teal",fr:"AP Accountant",en:"AP Accountant",frDesc:"Factures fournisseurs, contrôle documentaire, comptes et retenues.",enDesc:"Supplier invoices, document controls, accounts and withholding taxes.",count:8},
+  {id:"treasury",icon:"TR",color:"blue",fr:"Treasury Accountant",en:"Treasury Accountant",frDesc:"Banques, rapprochements, paiements et prévisions de trésorerie.",enDesc:"Banks, reconciliations, payments and cash forecasting.",count:6},
+  {id:"assets",icon:"FA",color:"gold",fr:"Fixed Assets Accountant",en:"Fixed Assets Accountant",frDesc:"Immobilisations, composants, amortissements et sorties d’actifs.",enDesc:"Fixed assets, components, depreciation and disposals.",count:4},
+  {id:"gl",icon:"GL",color:"violet",fr:"General Ledger Accountant",en:"General Ledger Accountant",frDesc:"Grand livre, clôture, cut-off, réconciliations et reporting.",enDesc:"General ledger, close, cut-off, reconciliations and reporting.",count:12},
+  {id:"tax",icon:"TX",color:"red",fr:"Tax Accountant",en:"Tax Accountant",frDesc:"TVA, retenues, IS, conformité et revue fiscale des opérations.",enDesc:"VAT, withholding, corporate tax, compliance and transaction review.",count:5},
 ];
 
-const nav: { id: View; label: string; icon: string }[] = [
-  { id: "overview", label: "Choisir un module", icon: "⌂" },
-  { id: "invoices", label: "Accounts Payable", icon: "▤" },
-  { id: "treasury", label: "Trésorerie", icon: "⇄" },
-  { id: "integrations", label: "Intégrations", icon: "⌁" },
+const agentDetail: Record<AgentId,{fr:string;en:string;controlsFr:string[];controlsEn:string[];refsFr:string[];refsEn:string[]}> = {
+  ap:{fr:"Analyse les factures, vérifie le fournisseur, le service fait, la TVA et propose l’imputation SYSCOHADA.",en:"Analyses invoices, validates the supplier and receipt, assesses VAT and proposes SYSCOHADA coding.",controlsFr:["Détection des doublons","Rapprochement commande–réception–facture","Revue TVA et retenue à la source"],controlsEn:["Duplicate detection","PO–receipt–invoice matching","VAT and withholding review"],refsFr:["Classes 4 et 6 du PCGO","CGI 2025 — TVA et retenues"],refsEn:["PCGO classes 4 and 6","2025 Tax Code — VAT and withholding"]},
+  treasury:{fr:"Rapproche les relevés bancaires, prépare les paiements et transmet les écarts au GL Accountant.",en:"Reconciles bank statements, prepares payments and routes differences to the GL Accountant.",controlsFr:["Rapprochement solde banque/compte 52","Séparation préparation–approbation","Détection des paiements inhabituels"],controlsEn:["Bank/ledger account 52 reconciliation","Maker–checker segregation","Unusual payment detection"],refsFr:["Classe 5 du PCGO","Tableau des flux SYSCOHADA"],refsEn:["PCGO class 5","SYSCOHADA cash-flow statement"]},
+  assets:{fr:"Détermine la qualification, le coût d’entrée, les composants, la durée et le plan d’amortissement.",en:"Determines recognition, initial cost, components, useful life and depreciation schedule.",controlsFr:["Seuil de capitalisation","Approche par composants","Test d’indice de dépréciation"],controlsEn:["Capitalisation threshold","Component approach","Impairment indicator test"],refsFr:["Classes 2 et 8 du PCGO","SYSCOHADA — composants et dépréciation"],refsEn:["PCGO classes 2 and 8","SYSCOHADA — components and impairment"]},
+  gl:{fr:"Orchestre la clôture, contrôle l’équilibre, les périodes, les réconciliations et la présentation financière.",en:"Orchestrates close, journal balance, periods, reconciliations and financial statement presentation.",controlsFr:["Équilibre débit/crédit","Période ouverte et cut-off","Réconciliation auxiliaires–grand livre"],controlsEn:["Debit/credit balance","Open period and cut-off","Subledger–GL reconciliation"],refsFr:["États financiers du Système normal","Principes et règles d’évaluation"],refsEn:["Normal System financial statements","Recognition and measurement rules"]},
+  tax:{fr:"Qualifie le traitement fiscal, calcule les taxes et documente la position retenue avant validation.",en:"Classifies tax treatment, calculates taxes and documents the position before approval.",controlsFr:["Territorialité et assujettissement","Déductibilité TVA","Échéances et piste déclarative"],controlsEn:["Territorial scope and liability","VAT recoverability","Deadlines and return audit trail"],refsFr:["CGI Cameroun 2025","TVA, IS, TSR et fiscalité locale"],refsEn:["Cameroon 2025 Tax Code","VAT, CIT, special income tax and local taxes"]},
+};
+
+const lines = [
+  {account:"604100",fr:"Achats de fournitures",en:"Supplies purchased",debit:"1 200 000",credit:"—"},
+  {account:"445200",fr:"TVA récupérable",en:"Recoverable VAT",debit:"231 000",credit:"—"},
+  {account:"401100",fr:"Fournisseur Africa Office",en:"Supplier Africa Office",debit:"—",credit:"1 431 000"},
 ];
 
-export default function Home() {
-  const [view, setView] = useState<View>("overview");
-  const [lang, setLang] = useState<"FR" | "EN">("FR");
-  const [notice, setNotice] = useState("");
-  const [query, setQuery] = useState("");
-  const [apiMode, setApiMode] = useState<ApiMode>("checking");
-  const filtered = useMemo(() => invoices.filter((i) => `${i.id} ${i.supplier}`.toLowerCase().includes(query.toLowerCase())), [query]);
-
-  const flash = (message: string) => { setNotice(message); setTimeout(() => setNotice(""), 2800); };
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getApiHealth(controller.signal).then((health) => setApiMode(health ? "connected" : "demo")).catch(() => setApiMode("demo"));
-    return () => controller.abort();
-  }, []);
-
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">M</span><span><b>Mon Comptable</b><small>Assistant comptable IA</small></span></div>
-        <div className="company-switch"><span className="company-avatar">AK</span><span><b>Akwa Consulting</b><small>Entité principale</small></span><span className="chevron">⌄</span></div>
-        <nav>
-          <p className="nav-label">MODULES</p>
-          {nav.map((item) => <button key={item.id} className={view === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}><span>{item.icon}</span>{item.label}{item.id === "invoices" && <em>8</em>}</button>)}
-          <p className="nav-label">GESTION</p>
-          <button className="nav-item" onClick={() => flash("Centre de contrôle ouvert en mode démonstration")}><span>✓</span>Approbations<em>3</em></button>
-          <button className="nav-item" onClick={() => flash("Journal d’audit : 248 événements protégés")}><span>◷</span>Journal d’audit</button>
-          <button className="nav-item" onClick={() => flash("Les paramètres société sont synchronisés") }><span>⚙</span>Paramètres</button>
-        </nav>
-        <div className="sidebar-foot"><div className="sync"><span className="pulse"/><span><b>ERP synchronisé</b><small>Il y a 12 minutes</small></span></div><div className="profile"><span>NS</span><div><b>Nadia Simo</b><small>Comptable senior</small></div><button>•••</button></div></div>
-      </aside>
-
-      <section className="workspace">
-        <header className="topbar">
-          <div className="mobile-brand"><span className="brand-mark">M</span><b>Mon Comptable</b></div>
-          <label className="search">⌕<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher une facture, un fournisseur…"/><kbd>⌘ K</kbd></label>
-          <div className="top-actions"><button className="lang" onClick={() => setLang(lang === "FR" ? "EN" : "FR")}>{lang}⌄</button><button className="icon-button">?</button><button className="icon-button notification">♢<i>3</i></button></div>
-        </header>
-
-        {view === "overview" && <Overview setView={setView} flash={flash} />}
-        {view === "invoices" && <Invoices items={filtered} flash={flash} />}
-        {view === "treasury" && <Treasury flash={flash} />}
-        {view === "integrations" && <Integrations flash={flash} apiMode={apiMode} />}
-      </section>
-      {notice && <div className="toast"><span>✓</span>{notice}</div>}
-    </main>
-  );
+function savedErpConfig(){
+  if(typeof window==="undefined") return {endpoint:"",mock:true};
+  try{return JSON.parse(sessionStorage.getItem("erp-test-config")||"null")||{endpoint:"",mock:true}}catch{return {endpoint:"",mock:true}}
 }
 
-function Overview({ setView }: { setView: (v: View) => void; flash: (s: string) => void }) {
-  return <div className="content">
-    <div className="module-heading"><p>MON COMPTABLE</p><h1>Bonjour Nadia. Quel module souhaitez-vous ouvrir ?</h1><span>Chaque espace possède ses propres processus, contrôles et tableaux de bord.</span></div>
-    <div className="module-grid">
-      <button className="module-card ap" onClick={() => setView("invoices")}><div className="module-top"><span className="module-icon">▤</span><em>MODULE 01</em></div><div><h2>Accounts Payable</h2><p>Gérez le cycle complet des factures fournisseurs, de la réception à la comptabilisation ERP.</p></div><div className="module-stats"><span><b>8</b><small>À traiter</small></span><span><b>3</b><small>À approuver</small></span><span><b>5</b><small>Prêtes</small></span></div><footer><span>Ouvrir Accounts Payable</span><b>→</b></footer></button>
-      <button className="module-card cash" onClick={() => setView("treasury")}><div className="module-top"><span className="module-icon">⇄</span><em>MODULE 02</em></div><div><h2>Treasury</h2><p>Importez, validez et transférez les relevés et transactions bancaires vers votre ERP.</p></div><div className="module-stats"><span><b>2</b><small>Comptes</small></span><span><b>1</b><small>À valider</small></span><span><b>60</b><small>Opérations</small></span></div><footer><span>Ouvrir Treasury</span><b>→</b></footer></button>
-    </div>
-    <section className="module-security"><span>✓</span><div><b>Deux modules, un même niveau de contrôle</b><p>Isolation des données, droits par rôle, traçabilité et validation humaine restent actifs dans chaque espace.</p></div><button onClick={() => setView("integrations")}>État des intégrations →</button></section>
-  </div>;
+export default function Home(){
+  const [lang,setLang]=useState<Lang>("fr"); const [view,setView]=useState<View>("overview"); const [notice,setNotice]=useState(""); const [query,setQuery]=useState("");
+  const [initialConfig]=useState(savedErpConfig); const [endpoint,setEndpoint]=useState(initialConfig.endpoint); const [token,setToken]=useState(""); const [mock,setMock]=useState(initialConfig.mock);
+  const t=copy[lang]; const flash=(s:string)=>{setNotice(s);setTimeout(()=>setNotice(""),2800)};
+  const selected=agents.find(a=>a.id===view); const filtered=useMemo(()=>agents.filter(a=>(a.fr+a.en+a.frDesc+a.enDesc).toLowerCase().includes(query.toLowerCase())),[query]);
+  const saveConfig=()=>{sessionStorage.setItem("erp-test-config",JSON.stringify({endpoint,mock}));flash(t.connected)};
+  const testConnection=async()=>{if(mock||!endpoint){flash(t.connected);return}try{const r=await fetch(endpoint.replace(/\/$/,"")+"/health",{headers:token?{Authorization:`Bearer ${token}`}:{}});flash(r.ok?t.connected:`HTTP ${r.status}`)}catch{flash(lang==="fr"?"Connexion impossible — vérifiez CORS et l’URL":"Connection failed — check CORS and URL")}};
+  return <main className="app-shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">M</span><span><b>{t.product}</b><small>{t.subtitle}</small></span></div><div className="company-switch"><span className="company-avatar">AK</span><span><b>Akwa Consulting</b><small>Cameroun · XAF</small></span></div><nav><p className="nav-label">{t.modules}</p><button className={`nav-item ${view==="overview"?"active":""}`} onClick={()=>setView("overview")}><span>⌂</span>{t.overview}</button>{agents.map(a=><button key={a.id} className={`nav-item ${view===a.id?"active":""}`} onClick={()=>setView(a.id)}><span>{a.icon}</span>{lang==="fr"?a.fr:a.en}<em>{a.count}</em></button>)}<p className="nav-label">{t.control}</p><button className={`nav-item ${view==="workflow"?"active":""}`} onClick={()=>setView("workflow")}><span>✓</span>{t.workflow}<em>3</em></button><button className={`nav-item ${view==="integrations"?"active":""}`} onClick={()=>setView("integrations")}><span>↔</span>{t.integrations}</button></nav><div className="sidebar-foot"><div className="sync"><span className="pulse"/><span><b>SYSCOHADA + CGI 2025</b><small>{lang==="fr"?"Référentiels chargés":"Frameworks loaded"}</small></span></div><div className="profile"><span>NS</span><div><b>Nadia Simo</b><small>{lang==="fr"?"Approbatrice":"Approver"}</small></div></div></div></aside><section className="workspace"><header className="topbar"><div className="mobile-brand"><span className="brand-mark">M</span><b>{t.product}</b></div><label className="search">⌕<input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.search}/></label><div className="top-actions"><button className="lang" onClick={()=>setLang(lang==="fr"?"en":"fr")}>{t.language}</button><button className="icon-button notification">●<i>3</i></button></div></header>{view==="overview"&&<Overview t={t} lang={lang} agents={filtered} setView={setView}/>} {selected&&<AgentPage t={t} lang={lang} agent={selected} flash={flash}/>} {view==="workflow"&&<Workflow t={t} lang={lang} flash={flash}/>} {view==="integrations"&&<Integrations t={t} lang={lang} endpoint={endpoint} setEndpoint={setEndpoint} token={token} setToken={setToken} mock={mock} setMock={setMock} save={saveConfig} test={testConnection}/>}</section>{notice&&<div className="toast"><span>✓</span>{notice}</div>}</main>;
 }
 
-function Metric({ label, value, detail, tone, icon }: {label:string;value:string;detail:string;tone:string;icon:string}) { return <article className="metric"><div className={`metric-icon ${tone}`}>{icon}</div><div><p>{label}</p><b>{value}</b><small>{detail}</small></div></article> }
+function Overview({t,lang,agents,setView}:{t:typeof copy.fr;lang:Lang;agents:typeof agents;setView:(v:View)=>void}){return <div className="content"><div className="module-heading"><p>{t.product.toUpperCase()}</p><h1>{t.hello}</h1><span>{t.intro}</span></div><div className="agent-grid">{agents.map((a,i)=><button className={`agent-card ${a.color}`} key={a.id} onClick={()=>setView(a.id)}><div className="agent-head"><span className="agent-icon">{a.icon}</span><em>AGENT 0{i+1}</em></div><h2>{lang==="fr"?a.fr:a.en}</h2><p>{lang==="fr"?a.frDesc:a.enDesc}</p><div className="agent-stats"><span><b>{a.count}</b><small>{t.tasks}</small></span><span><b>{Math.max(2,a.count-2)}</b><small>{t.ready}</small></span><span><b>{i%3}</b><small>{t.exceptions}</small></span></div><footer>{t.open}<b>→</b></footer></button>)}</div><section className="module-security"><span>✓</span><div><b>{t.compliance}</b><p>{t.complianceText}</p></div><button onClick={()=>setView("workflow")}>{t.workflow} →</button></section></div>}
 
-function InvoiceTable({ items }: { items: typeof invoices }) { return <div className="table"><div className="thead"><span>FOURNISSEUR</span><span>DATE</span><span>MONTANT</span><span>STATUT</span><span>CONFIANCE</span></div>{items.map((row) => <button className="trow" key={row.id}><span className="supplier"><i>{row.supplier.slice(0,2).toUpperCase()}</i><span><b>{row.supplier}</b><small>{row.id}</small></span></span><span>{row.date}</span><b>{row.amount}<small> XAF</small></b><span><em className={`status ${row.tone}`}>● {row.status}</em></span><span className="confidence"><i style={{width:`${row.confidence}%`}}/><small>{row.confidence}%</small></span></button>)}</div> }
+function AgentPage({t,lang,agent,flash}:{t:typeof copy.fr;lang:Lang;agent:typeof agents[number];flash:(s:string)=>void}){const d=agentDetail[agent.id];const controls=lang==="fr"?d.controlsFr:d.controlsEn;const refs=lang==="fr"?d.refsFr:d.refsEn;return <div className="content inner"><div className="page-heading"><div><p>{t.modules}</p><h1>{lang==="fr"?agent.fr:agent.en}</h1><p className="subtitle">{lang==="fr"?d.fr:d.en}</p></div><button className="primary" onClick={()=>flash(lang==="fr"?"Nouvelle pièce ajoutée à la file":"New document added to queue")}>＋ {lang==="fr"?"Nouvelle opération":"New transaction"}</button></div><div className="agent-layout"><section className="panel"><div className="panel-head"><div><h2>{t.queue}</h2><p>{agent.count} {t.tasks.toLowerCase()}</p></div></div>{["AFR-2026-0842","BANK-REC-0731","CLOSE-2026-07"].map((x,i)=><button className="work-item" key={x}><span className={`work-badge ${agent.color}`}>{agent.icon}</span><div><b>{x}</b><small>{i===0?"Africa Office SARL":"Akwa Consulting"}</small></div><em className={`status ${i?"blue":"amber"}`}>{i? t.ready:t.exceptions}</em><strong>→</strong></button>)}</section><div className="agent-side"><section className="panel detail-panel"><div className="panel-head"><h2>{t.mission}</h2></div>{controls.map(x=><p className="check" key={x}><span>✓</span>{x}</p>)}</section><section className="panel detail-panel"><div className="panel-head"><h2>{t.evidence}</h2></div>{refs.map(x=><p className="reference" key={x}><span>§</span>{x}</p>)}</section></div></div></div>}
 
-function Invoices({ items, flash }: {items: typeof invoices; flash:(s:string)=>void}) { return <div className="content inner"><div className="page-heading"><div><p>COMPTES FOURNISSEURS</p><h1>Factures fournisseurs</h1><p className="subtitle">Contrôlez, approuvez et comptabilisez chaque pièce en toute confiance.</p></div><button className="primary" onClick={()=>flash("Import lancé — analyse OCR en arrière-plan")}>＋ Importer une facture</button></div><div className="filter-row"><button className="filter active">Toutes <b>8</b></button><button className="filter">À vérifier <b>2</b></button><button className="filter">À approuver <b>3</b></button><button className="filter">Prêtes <b>5</b></button><button className="filter">Comptabilisées</button><button className="outline">☷ Filtres</button></div><section className="panel invoice-panel"><InvoiceTable items={items}/></section><div className="ai-note"><span>✦</span><div><b>Contrôles déterministes actifs</b><p>Équilibre débit/crédit, fournisseur ERP, période ouverte, TVA et doublons sont vérifiés avant toute comptabilisation.</p></div></div></div> }
+function Workflow({t,lang,flash}:{t:typeof copy.fr;lang:Lang;flash:(s:string)=>void}){return <div className="content inner"><div className="page-heading"><div><p>{t.control}</p><h1>{t.workflow}</h1><p className="subtitle">{lang==="fr"?"Une chaîne contrôlée de la pièce au brouillon ERP.":"A controlled chain from source document to ERP draft."}</p></div><button className="primary" onClick={()=>flash(t.draft)}>{t.submit}</button></div><div className="handoff"><span><b>AP</b><small>{lang==="fr"?"Imputation":"Coding"}</small></span><i>→</i><span><b>TX</b><small>{lang==="fr"?"Fiscalité":"Tax review"}</small></span><i>→</i><span><b>GL</b><small>{lang==="fr"?"Contrôle":"Control"}</small></span><i>→</i><span><b>NS</b><small>{lang==="fr"?"Approbation":"Approval"}</small></span><i>→</i><span><b>ERP</b><small>{lang==="fr"?"Brouillon":"Draft"}</small></span></div><section className="panel journal-panel"><div className="panel-head"><div><h2>{t.journal} · FAC-2026-0842</h2><p>Journal ACH · 31/07/2026 · XAF</p></div><em className="balanced">✓ {lang==="fr"?"Équilibrée":"Balanced"}</em></div><div className="journal-head"><span>{t.account}</span><span>{t.label}</span><span>{t.debit}</span><span>{t.credit}</span></div>{lines.map(l=><div className="journal-line" key={l.account}><b>{l.account}</b><span>{lang==="fr"?l.fr:l.en}</span><strong>{l.debit}</strong><strong>{l.credit}</strong></div>)}<div className="journal-total"><span>{lang==="fr"?"Totaux":"Totals"}</span><b>1 431 000</b><b>1 431 000</b></div></section><div className="ai-note"><span>✦</span><div><b>{lang==="fr"?"Contrôles croisés terminés":"Cross-agent checks completed"}</b><p>{lang==="fr"?"Compte fournisseur, TVA déductible, équilibre, période et doublons validés. Publication ERP volontairement désactivée.":"Supplier account, recoverable VAT, balance, period and duplicates validated. ERP posting is deliberately disabled."}</p></div></div></div>}
 
-function Treasury({ flash }: {flash:(s:string)=>void}) { return <div className="content inner"><div className="page-heading"><div><p>TRÉSORERIE</p><h1>Relevés bancaires</h1><p className="subtitle">Importez et validez vos opérations avant transfert vers l’ERP.</p></div><button className="primary" onClick={()=>flash("Import prêt — formats CSV, MT940 et CAMT.053")}>＋ Importer un relevé</button></div><div className="bank-cards"><article className="bank-card featured"><div><span className="bank-logo">A</span><p><b>Afriland First Bank</b><small>Compte courant · •••• 2841</small></p></div><h3>18 245 900 <small>XAF</small></h3><footer><span>Dernier import : 31 juil.</span><em>À jour</em></footer></article><article className="bank-card"><div><span className="bank-logo blue">S</span><p><b>Société Générale</b><small>Compte dépenses · •••• 6712</small></p></div><h3>4 812 640 <small>XAF</small></h3><footer><span>Dernier import : 29 juil.</span><em className="warning">2 jours</em></footer></article></div><section className="panel"><div className="panel-head"><div><h2>Imports récents</h2><p>Suivi des validations et transferts ERP</p></div></div><div className="statement-row"><span className="file">CSV</span><div><b>AFB_JUILLET_2026.csv</b><small>42 opérations · Journal BQ-AFB</small></div><span>31 juil. 2026</span><b>12 847 500 XAF</b><em className="status green">● Importé</em></div><div className="statement-row"><span className="file">MT</span><div><b>SGC_2026_W31.mt940</b><small>18 opérations · Journal BQ-SGC</small></div><span>29 juil. 2026</span><b>3 210 400 XAF</b><em className="status amber">● À valider</em></div></section></div> }
-
-function Integrations({ flash, apiMode }: {flash:(s:string)=>void;apiMode:ApiMode}) { const connected=apiMode==="connected"; return <div className="content inner"><div className="page-heading"><div><p>ADMINISTRATION</p><h1>Intégrations</h1><p className="subtitle">État des services et des synchronisations de données.</p></div><button className="outline" onClick={()=>flash(connected?"API vérifiée — services disponibles":"Mode démonstration — aucune API externe configurée")}>↻ Tout vérifier</button></div><div className="integration-grid">{[["API",connected?"Mon Comptable API":"API locale non configurée",connected?"Opérationnelle":"Mode démo"],["ERP","ERP SYSCOHADA (mock)","Simulé"],["OCR","Moteur OCR mock","Simulé"],["✉","Réception e-mail","Mode test"]].map((x,i)=><article className="integration" key={x[1]}><span>{x[0]}</span><div><b>{x[1]}</b><small>État : {x[2]}</small></div><em className={i>0||!connected?"test":""}>● {i===0&&connected?"Connecté":"Test"}</em><button onClick={()=>flash(`${x[1]} : ${i===0&&connected?"connexion active":"adaptateur de démonstration"}`)}>Vérifier</button></article>)}</div><div className="mock-banner"><span>i</span><div><b>{connected?"API connectée — fournisseurs externes simulés":"Environnement de démonstration sécurisé"}</b><p>Les adaptateurs ERP, OCR, e-mail et stockage utilisent actuellement des réponses simulées. Aucune connexion externe n’est présentée comme active.</p></div></div></div> }
+function Integrations({t,lang,endpoint,setEndpoint,token,setToken,mock,setMock,save,test}:{t:typeof copy.fr;lang:Lang;endpoint:string;setEndpoint:(x:string)=>void;token:string;setToken:(x:string)=>void;mock:boolean;setMock:(x:boolean)=>void;save:()=>void;test:()=>void}){return <div className="content inner"><div className="page-heading"><div><p>{t.control}</p><h1>{t.connector}</h1><p className="subtitle">{t.connectorText}</p></div></div><div className="connector-grid"><section className="panel connector-form"><label>{t.endpoint}<input value={endpoint} onChange={e=>setEndpoint(e.target.value)} placeholder="https://sandbox.erp.example/api/v1" disabled={mock}/></label><label>{t.auth}<select disabled={mock}><option>Bearer token</option><option>OAuth 2.0</option><option>API key</option><option>Basic</option></select></label><label>{t.token}<input type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="••••••••••••" disabled={mock}/></label><label className="checkline"><input type="checkbox" checked={mock} onChange={e=>setMock(e.target.checked)}/>{t.testMode}</label><div className="form-actions"><button className="outline" onClick={test}>{t.test}</button><button className="primary" onClick={save}>{t.save}</button></div></section><section className="panel api-contract"><div className="panel-head"><h2>{lang==="fr"?"Contrat de journal":"Journal contract"}</h2></div><code>{`POST /journals/drafts\n{\n  "external_id": "FAC-2026-0842",\n  "ledger": "ACH",\n  "currency": "XAF",\n  "posting_status": "DRAFT",\n  "lines": [ ... ],\n  "approvals": [ ... ],\n  "evidence": [ ... ]\n}`}</code><p>✓ Idempotency-Key &nbsp; ✓ OAuth/API key &nbsp; ✓ Audit trail</p></section></div><div className="mock-banner"><span>i</span><div><b>{mock?(lang==="fr"?"Simulateur ERP actif":"ERP simulator active"):(lang==="fr"?"Environnement externe sélectionné":"External environment selected")}</b><p>{lang==="fr"?"Le jeton reste uniquement dans cette session de test. En production, les secrets doivent être conservés côté serveur.":"The token remains only in this test session. Production secrets must be stored server-side."}</p></div></div></div>}
