@@ -25,3 +25,9 @@ test("AP extraction uses the server-side Anthropic connector",()=>{
  assert.doesNotMatch(worker,/api\.moonshot\.ai/);
  assert.doesNotMatch(worker,/api\.openai\.com/);
 });
+
+test("AP queue excludes legacy providers and failed Claude documents can be retried",()=>{
+ assert.match(worker,/r\.model=\?/);
+ assert.match(worker,/existing&&existing\.status!=="failed"/);
+ assert.doesNotMatch(worker,/confidence:\{type:"number",minimum:/);
+});
