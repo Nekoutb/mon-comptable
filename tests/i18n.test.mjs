@@ -16,7 +16,7 @@ test("English and French dictionaries have identical, non-empty keys", () => {
 });
 
 test("agent names are fully localised", () => {
-  for (const english of ["AP Accountant","Treasury Accountant","Fixed Assets Accountant","General Ledger Accountant","Tax Accountant"])
+  for (const english of ["Financial Controller","AP Accountant","Treasury Accountant","Fixed Assets Accountant","General Ledger Accountant","Tax Accountant"])
     assert.equal(frBlock.includes(english), false, `French dictionary contains ${english}`);
   for (const french of ["Comptable fournisseurs","Comptable trésorerie","Comptable immobilisations","Comptable général","Comptable fiscaliste"])
     assert.equal(enBlock.includes(french), false, `English dictionary contains ${french}`);

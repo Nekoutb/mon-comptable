@@ -19,12 +19,12 @@ test("server renders bilingual product metadata with English as the default", as
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
-test("keeps all five accounting agents as separate modules", async () => {
+test("keeps all six accounting agents as separate modules", async () => {
   const i18n = await readFile(new URL("../app/lib/i18n.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  for (const name of ["AP Accountant", "Treasury Accountant", "Fixed Assets Accountant", "General Ledger Accountant", "Tax Accountant"])
+  for (const name of ["Financial Controller", "AP Accountant", "Treasury Accountant", "Fixed Assets Accountant", "General Ledger Accountant", "Tax Accountant"])
     assert.match(i18n, new RegExp(name));
-  for (const id of ["ap", "treasury", "assets", "gl", "tax"])
+  for (const id of ["controller", "ap", "treasury", "assets", "gl", "tax"])
     assert.match(page, new RegExp(`id:\"${id}\"`));
 });
 
