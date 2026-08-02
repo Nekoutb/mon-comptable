@@ -12,7 +12,12 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     background_mode: str = "inline"
     inbound_webhook_secret: str = "development-webhook-secret"
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
     model_config = SettingsConfigDict(env_file=".env", env_prefix="MC_", extra="ignore")
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     def assert_secure(self) -> None:
         if self.environment == "production" and self.jwt_secret == "development-only-change-me":

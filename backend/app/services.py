@@ -9,12 +9,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .adapters import erp_adapter
+from .context import correlation_id_var
 from .models import Account, AccountingProposal, AuditLog, BankStatement, BankStatementLine, ERPPosting, Invoice, InvoiceStatus, Journal, StatementStatus, Supplier, TaxCode, User
 from .parsers import parse_statement
 
+# Statuses in which an invoice is frozen for edits and automated re-processing.
+LOCKED_STATUSES = {InvoiceStatus.PENDING_APPROVAL, InvoiceStatus.APPROVED, InvoiceStatus.ERP_DRAFT, InvoiceStatus.POSTED}
 
-def audit(db: Session, user: User, action: str, record_type: str, record_id: str, before=None, after=None, reason=None, origin="human"):
-    db.add(AuditLog(tenant_id=user.tenant_id, user_id=user.id, action=action, record_type=record_type, record_id=record_id, before=before, after=after, reason=reason, correlation_id=str(uuid.uuid4()), origin=origin))
+
+def audit(db: Session, user: User | None, action: str, record_type: str, record_id: str, before=None, after=None, reason=None, origin="human", tenant_id: str | None = None):
+    db.add(AuditLog(tenant_id=tenant_id or user.tenant_id, user_id=user.id if user else None, action=action, record_type=record_type, record_id=record_id, before=before, after=after, reason=reason, correlation_id=correlation_id_var.get() or str(uuid.uuid4()), origin=origin))
+
+
+def ensure_unlocked(invoice: Invoice) -> None:
+    if invoice.status in LOCKED_STATUSES:
+        raise HTTPException(409, f"Invoice is locked in status {invoice.status.value}")
 
 
 def normalize_invoice_number(value: str | None) -> str | None:
@@ -22,6 +31,7 @@ def normalize_invoice_number(value: str | None) -> str | None:
 
 
 def match_supplier(db: Session, invoice: Invoice, user: User) -> dict:
+    ensure_unlocked(invoice)
     extracted = invoice.ocr_output or {}
     suppliers = db.scalars(select(Supplier).where(Supplier.tenant_id == user.tenant_id, Supplier.entity_id == invoice.entity_id, Supplier.active.is_(True))).all()
     candidates = []
@@ -46,16 +56,25 @@ def match_supplier(db: Session, invoice: Invoice, user: User) -> dict:
 
 
 def duplicate_check(db: Session, invoice: Invoice, user: User) -> dict:
-    exact = db.scalar(select(Invoice).where(Invoice.tenant_id == user.tenant_id, Invoice.entity_id == invoice.entity_id, Invoice.id != invoice.id, Invoice.supplier_id == invoice.supplier_id, Invoice.normalized_number == invoice.normalized_number, Invoice.gross_amount == invoice.gross_amount))
-    level = "exact" if exact else "none"
+    ensure_unlocked(invoice)
+    base = select(Invoice).where(Invoice.tenant_id == user.tenant_id, Invoice.entity_id == invoice.entity_id, Invoice.id != invoice.id, Invoice.supplier_id == invoice.supplier_id)
+    exact = db.scalar(base.where(Invoice.normalized_number == invoice.normalized_number, Invoice.gross_amount == invoice.gross_amount)) if invoice.supplier_id else None
+    probable = None
+    if not exact and invoice.supplier_id and invoice.normalized_number:
+        probable = db.scalar(base.where(Invoice.normalized_number == invoice.normalized_number, Invoice.gross_amount != invoice.gross_amount))
+    matched = exact or probable
+    level = "exact" if exact else "probable" if probable else "none"
     invoice.duplicate_level = level
     if exact:
         invoice.status = InvoiceStatus.DUPLICATE
-    audit(db, user, "duplicate_check", "invoice", invoice.id, after={"level": level, "matched_invoice_id": exact.id if exact else None}, origin="automation")
-    return {"level": level, "matched_invoice_id": exact.id if exact else None, "posting_blocked": bool(exact)}
+    elif invoice.status == InvoiceStatus.DUPLICATE:
+        invoice.status = InvoiceStatus.REVIEW
+    audit(db, user, "duplicate_check", "invoice", invoice.id, after={"level": level, "matched_invoice_id": matched.id if matched else None}, origin="automation")
+    return {"level": level, "matched_invoice_id": matched.id if matched else None, "posting_blocked": level in {"exact", "probable"}}
 
 
 def generate_proposal(db: Session, invoice: Invoice, user: User) -> AccountingProposal:
+    ensure_unlocked(invoice)
     if not invoice.supplier_id:
         raise HTTPException(409, "Supplier must be matched first")
     if invoice.duplicate_level in {"exact", "probable"}:
@@ -77,8 +96,17 @@ def generate_proposal(db: Session, invoice: Invoice, user: User) -> AccountingPr
     return proposal
 
 
-def post_invoice(db: Session, invoice: Invoice, user: User, key: str, mode: str) -> ERPPosting:
+def claim_idempotency(db: Session, user: User, key: str, record_type: str, record_id: str, mode: str) -> ERPPosting | None:
     existing = db.scalar(select(ERPPosting).where(ERPPosting.idempotency_key == key, ERPPosting.tenant_id == user.tenant_id))
+    if not existing:
+        return None
+    if existing.record_type != record_type or existing.record_id != record_id or existing.mode != mode:
+        raise HTTPException(409, "Idempotency key already used for a different operation")
+    return existing
+
+
+def post_invoice(db: Session, invoice: Invoice, user: User, key: str, mode: str) -> ERPPosting:
+    existing = claim_idempotency(db, user, key, "invoice", invoice.id, mode)
     if existing:
         return existing
     if invoice.status not in {InvoiceStatus.APPROVED, InvoiceStatus.ERP_DRAFT}:
@@ -86,11 +114,26 @@ def post_invoice(db: Session, invoice: Invoice, user: User, key: str, mode: str)
     proposal = db.scalar(select(AccountingProposal).where(AccountingProposal.invoice_id == invoice.id, AccountingProposal.tenant_id == user.tenant_id))
     if not proposal or not proposal.validated or proposal.debit != proposal.credit:
         raise HTTPException(409, "A balanced validated proposal is required")
+    if proposal.debit != invoice.gross_amount:
+        raise HTTPException(409, "Proposal is stale; regenerate it before ERP recording")
     payload = {"invoice_id": invoice.id, "amount": str(invoice.gross_amount), "currency": invoice.currency, "proposal_id": proposal.id}
     response = erp_adapter.create_vendor_bill_draft(payload, key) if mode == "draft" else erp_adapter.post_vendor_bill(payload, key)
     posting = ERPPosting(tenant_id=user.tenant_id, record_type="invoice", record_id=invoice.id, idempotency_key=key, mode=mode, status="success", external_reference=response["external_reference"], response=response)
     db.add(posting); invoice.status = InvoiceStatus.ERP_DRAFT if mode == "draft" else InvoiceStatus.POSTED
     audit(db, user, f"erp_{mode}", "invoice", invoice.id, after=response, origin="automation")
+    return posting
+
+
+def post_statement_to_erp(db: Session, statement: BankStatement, user: User, key: str) -> ERPPosting:
+    existing = claim_idempotency(db, user, key, "bank_statement", statement.id, "post")
+    if existing:
+        return existing
+    if statement.status != StatementStatus.VALIDATED:
+        raise HTTPException(409, "Validated statement required")
+    response = erp_adapter.post_bank_statement({"statement_id": statement.id}, key)
+    posting = ERPPosting(tenant_id=user.tenant_id, record_type="bank_statement", record_id=statement.id, idempotency_key=key, mode="post", status="success", external_reference=response["external_reference"], response=response)
+    db.add(posting); statement.status = StatementStatus.IMPORTED
+    audit(db, user, "bank_statement_posted", "bank_statement", statement.id, after=response, origin="automation")
     return posting
 
 
