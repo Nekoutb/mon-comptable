@@ -32,6 +32,51 @@ function publicConnection(row:StoredConnection|null){return row?{id:row.id,name:
 async function connectionApi(request:Request,env:Env){const owner=userId(request);if(!owner)return json({ok:false,message:"Sign in is required."},401);if(request.method==="GET")return json({ok:true,connection:publicConnection(await getConnection(env,owner))});if(request.method!=="POST")return json({ok:false,message:"Method not allowed."},405);let body:{name?:string;endpoint?:string;database?:string;login?:string;company?:string;protocol?:OdooProtocol;api_key?:string};try{body=await request.json()}catch{return json({ok:false,message:"Invalid request."},400)}if(!body.name||!body.endpoint||!body.database||!body.company||!body.protocol)return json({ok:false,message:"Complete every required connection field."},400);try{safeOdooOrigin(body.endpoint)}catch(error){return json({ok:false,message:error instanceof Error?error.message:"Invalid URL."},400)}const existing=await getConnection(env,owner);if(!body.api_key&&!existing)return json({ok:false,message:"API key is required for the first save."},400);const encrypted=body.api_key?await encrypt(body.api_key,env.ERP_ENCRYPTION_KEY):existing!.encrypted_key;const id=existing?.id||crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare("INSERT INTO erp_connections(id,owner_id,tenant_id,name,endpoint,database_name,login,company,protocol,encrypted_key,updated_at) VALUES(?,?,'default',?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,tenant_id) DO UPDATE SET name=excluded.name,endpoint=excluded.endpoint,database_name=excluded.database_name,login=excluded.login,company=excluded.company,protocol=excluded.protocol,encrypted_key=excluded.encrypted_key,updated_at=excluded.updated_at").bind(id,owner,body.name,body.endpoint,body.database,body.login||"",body.company,body.protocol,encrypted,now).run();return json({ok:true,connection:publicConnection((await getConnection(env,owner))!),message:"ERP connection saved securely."})}
 async function syncApi(request:Request,env:Env){const owner=userId(request);if(!owner)return json({ok:false,message:"Sign in is required."},401);const row=await getConnection(env,owner);if(!row)return json({ok:false,message:"Save an ERP connection before synchronising."},409);const key=await decrypt(row.encrypted_key,env.ERP_ENCRYPTION_KEY);const body={endpoint:row.endpoint,database:row.database_name,login:row.login,api_key:key,protocol:row.protocol};const testRequest=new Request(request.url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),tested=await testOdooConnection(testRequest),testedPayload=await tested.clone().json() as {ok?:boolean;message?:string};if(!testedPayload.ok)return json(testedPayload,tested.status);const refreshedAt=new Date().toISOString();await env.DB.prepare("UPDATE erp_connections SET last_sync_at=? WHERE id=?").bind(refreshedAt,row.id).run();return json({ok:true,message:"Application synchronised with Odoo.",refreshedAt,connection:publicConnection(row)})}
 
+type OdooRecord=Record<string,unknown>;
+async function odooSearchRead(row:StoredConnection,key:string,model:string,domain:unknown[],fields:string[],limit=5000){
+  const origin=safeOdooOrigin(row.endpoint),headers={"content-type":"application/json; charset=utf-8","user-agent":"MyAccountant-Odoo-Connector/1.0"};
+  if(row.protocol==="json2"){
+    const response=await fetch(`${origin}/json/2/${model}/search_read`,{method:"POST",headers:{...headers,authorization:`bearer ${key}`,"x-odoo-database":row.database_name},body:JSON.stringify({domain,fields,limit})});
+    if(!response.ok)throw new Error(await odooError(response));return await response.json() as OdooRecord[];
+  }
+  if(row.protocol==="jsonrpc"){
+    const auth=await fetch(`${origin}/jsonrpc`,{method:"POST",headers,body:JSON.stringify({jsonrpc:"2.0",method:"call",params:{service:"common",method:"authenticate",args:[row.database_name,row.login,key,{}]},id:crypto.randomUUID()})});
+    const authPayload=await auth.json() as {result?:number};if(!authPayload.result)throw new Error("Odoo authentication failed.");
+    const response=await fetch(`${origin}/jsonrpc`,{method:"POST",headers,body:JSON.stringify({jsonrpc:"2.0",method:"call",params:{service:"object",method:"execute_kw",args:[row.database_name,authPayload.result,key,model,"search_read",[domain],{fields,limit}]},id:crypto.randomUUID()})});
+    const payload=await response.json() as {result?:OdooRecord[];error?:{message?:string}};if(!payload.result)throw new Error(payload.error?.message||"Odoo data read failed.");return payload.result;
+  }
+  throw new Error("Finance data reads require Odoo JSON-2 or JSON-RPC.");
+}
+async function odooReadGroup(row:StoredConnection,key:string,model:string,domain:unknown[],fields:string[],groupby:string[]){
+  const origin=safeOdooOrigin(row.endpoint),headers={"content-type":"application/json; charset=utf-8","user-agent":"MyAccountant-Odoo-Connector/1.0"};
+  if(row.protocol==="json2"){const response=await fetch(`${origin}/json/2/${model}/read_group`,{method:"POST",headers:{...headers,authorization:`bearer ${key}`,"x-odoo-database":row.database_name},body:JSON.stringify({domain,fields,groupby,lazy:false})});if(!response.ok)throw new Error(await odooError(response));return await response.json() as OdooRecord[]}
+  if(row.protocol==="jsonrpc"){const auth=await fetch(`${origin}/jsonrpc`,{method:"POST",headers,body:JSON.stringify({jsonrpc:"2.0",method:"call",params:{service:"common",method:"authenticate",args:[row.database_name,row.login,key,{}]},id:crypto.randomUUID()})}),authPayload=await auth.json() as {result?:number};if(!authPayload.result)throw new Error("Odoo authentication failed.");const response=await fetch(`${origin}/jsonrpc`,{method:"POST",headers,body:JSON.stringify({jsonrpc:"2.0",method:"call",params:{service:"object",method:"execute_kw",args:[row.database_name,authPayload.result,key,model,"read_group",[domain,fields,groupby],{lazy:false}]},id:crypto.randomUUID()})}),payload=await response.json() as {result?:OdooRecord[];error?:{message?:string}};if(!payload.result)throw new Error(payload.error?.message||"Odoo grouped data read failed.");return payload.result}
+  throw new Error("Finance data reads require Odoo JSON-2 or JSON-RPC.");
+}
+const relationName=(value:unknown)=>Array.isArray(value)?String(value[1]||value[0]||""):String(value||"");
+async function financeDataApi(request:Request,env:Env){
+  const owner=userId(request);if(!owner)return json({ok:false,message:"Sign in is required."},401);const row=await getConnection(env,owner);if(!row)return json({ok:false,message:"Connect Odoo first."},409);const key=await decrypt(row.encrypted_key,env.ERP_ENCRYPTION_KEY),scope=new URL(request.url).searchParams.get("scope")||"ap";
+  try{
+    if(scope==="ap"){
+      const [lines,invoices]=await Promise.all([
+        odooSearchRead(row,key,"account.move.line",[["account_id.account_type","=","liability_payable"],["parent_state","=","posted"],["amount_residual","!=",0]],["date_maturity","amount_residual","partner_id","move_name","currency_id"],10000),
+        odooSearchRead(row,key,"account.move",[["move_type","=","in_invoice"],["state","in",["draft","posted"]]],["name","partner_id","invoice_date","invoice_date_due","amount_total","amount_residual","state","payment_state","currency_id"],250)
+      ]);
+      const today=new Date();today.setUTCHours(0,0,0,0);const buckets={current:0,days1to30:0,days31to60:0,days61to90:0,over90:0,total:0};
+      for(const line of lines){const amount=Math.abs(Number(line.amount_residual)||0),due=line.date_maturity?new Date(String(line.date_maturity)):today,days=Math.floor((today.getTime()-due.getTime())/86400000);buckets.total+=amount;if(days<=0)buckets.current+=amount;else if(days<=30)buckets.days1to30+=amount;else if(days<=60)buckets.days31to60+=amount;else if(days<=90)buckets.days61to90+=amount;else buckets.over90+=amount}
+      return json({ok:true,scope,source:"Odoo",readAt:new Date().toISOString(),ageing:buckets,openItems:lines.length,invoices:invoices.map(x=>({...x,partner:relationName(x.partner_id),currency:relationName(x.currency_id)}))});
+    }
+    if(scope==="controller"){
+      const groups=await odooReadGroup(row,key,"account.move.line",[["parent_state","=","posted"]],["debit:sum","credit:sum","balance:sum"],["account_id"]);
+      const trialBalance=groups.map(line=>({account:relationName(line.account_id)||"Unspecified",debit:Number(line.debit)||0,credit:Number(line.credit)||0,balance:Number(line.balance)||0})).sort((a,b)=>a.account.localeCompare(b.account));
+      return json({ok:true,scope,source:"Odoo",readAt:new Date().toISOString(),trialBalance});
+    }
+    const model=scope==="treasury"?"account.journal":scope==="tax"?"account.tax":scope==="assets"?"account.asset":"account.move";
+    const domain=scope==="treasury"?[["type","in",["bank","cash"]]]:[];const fields=scope==="treasury"?["name","code","type","currency_id"]:["name"];
+    const records=await odooSearchRead(row,key,model,domain,fields,1000);return json({ok:true,scope,source:"Odoo",readAt:new Date().toISOString(),records});
+  }catch(error){return json({ok:false,scope,message:error instanceof Error?error.message:"Odoo data pull failed."},422)}
+}
+
 type OdooProtocol = "json2" | "jsonrpc" | "xmlrpc";
 
 function json(data: unknown, status = 200) {
@@ -118,6 +163,7 @@ const worker = {
     if (url.pathname === "/api/erp-connections/test") return testOdooConnection(request,env);
     if (url.pathname === "/api/erp-connections") return connectionApi(request,env);
     if (url.pathname === "/api/sync") return syncApi(request,env);
+    if (url.pathname === "/api/finance-data") return financeDataApi(request,env);
 
     return handler.fetch(request, env, ctx);
   },
