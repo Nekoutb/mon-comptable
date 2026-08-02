@@ -5,6 +5,7 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  ERP_ENCRYPTION_KEY: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -18,6 +19,18 @@ interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
 }
+
+type StoredConnection={id:string;name:string;endpoint:string;database_name:string;login:string;company:string;protocol:OdooProtocol;encrypted_key:string;updated_at:string};
+function userId(request:Request){return request.headers.get("oai-authenticated-user-id")||""}
+function bytesToBase64(bytes:Uint8Array){let value="";for(const byte of bytes)value+=String.fromCharCode(byte);return btoa(value)}
+function base64ToBytes(value:string){return Uint8Array.from(atob(value),c=>c.charCodeAt(0))}
+async function encryptionKey(secret:string){return crypto.subtle.importKey("raw",new TextEncoder().encode(secret.padEnd(32,"0").slice(0,32)),"AES-GCM",false,["encrypt","decrypt"])}
+async function encrypt(value:string,secret:string){const iv=crypto.getRandomValues(new Uint8Array(12)),key=await encryptionKey(secret),encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(value)));return `${bytesToBase64(iv)}.${bytesToBase64(encrypted)}`}
+async function decrypt(value:string,secret:string){const [iv,data]=value.split("."),key=await encryptionKey(secret),plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:base64ToBytes(iv)},key,base64ToBytes(data));return new TextDecoder().decode(plain)}
+async function getConnection(env:Env,owner:string){return env.DB.prepare("SELECT id,name,endpoint,database_name,login,company,protocol,encrypted_key,updated_at FROM erp_connections WHERE owner_id=? AND tenant_id='default' LIMIT 1").bind(owner).first<StoredConnection>()}
+function publicConnection(row:StoredConnection|null){return row?{id:row.id,name:row.name,endpoint:row.endpoint,database:row.database_name,login:row.login,company:row.company,protocol:row.protocol,updatedAt:row.updated_at,connected:true}:null}
+async function connectionApi(request:Request,env:Env){const owner=userId(request);if(!owner)return json({ok:false,message:"Sign in is required."},401);if(request.method==="GET")return json({ok:true,connection:publicConnection(await getConnection(env,owner))});if(request.method!=="POST")return json({ok:false,message:"Method not allowed."},405);let body:{name?:string;endpoint?:string;database?:string;login?:string;company?:string;protocol?:OdooProtocol;api_key?:string};try{body=await request.json()}catch{return json({ok:false,message:"Invalid request."},400)}if(!body.name||!body.endpoint||!body.database||!body.company||!body.protocol)return json({ok:false,message:"Complete every required connection field."},400);try{safeOdooOrigin(body.endpoint)}catch(error){return json({ok:false,message:error instanceof Error?error.message:"Invalid URL."},400)}const existing=await getConnection(env,owner);if(!body.api_key&&!existing)return json({ok:false,message:"API key is required for the first save."},400);const encrypted=body.api_key?await encrypt(body.api_key,env.ERP_ENCRYPTION_KEY):existing!.encrypted_key;const id=existing?.id||crypto.randomUUID(),now=new Date().toISOString();await env.DB.prepare("INSERT INTO erp_connections(id,owner_id,tenant_id,name,endpoint,database_name,login,company,protocol,encrypted_key,updated_at) VALUES(?,?,'default',?,?,?,?,?,?,?,?) ON CONFLICT(owner_id,tenant_id) DO UPDATE SET name=excluded.name,endpoint=excluded.endpoint,database_name=excluded.database_name,login=excluded.login,company=excluded.company,protocol=excluded.protocol,encrypted_key=excluded.encrypted_key,updated_at=excluded.updated_at").bind(id,owner,body.name,body.endpoint,body.database,body.login||"",body.company,body.protocol,encrypted,now).run();return json({ok:true,connection:publicConnection((await getConnection(env,owner))!),message:"ERP connection saved securely."})}
+async function syncApi(request:Request,env:Env){const owner=userId(request);if(!owner)return json({ok:false,message:"Sign in is required."},401);const row=await getConnection(env,owner);if(!row)return json({ok:false,message:"Save an ERP connection before synchronising."},409);const key=await decrypt(row.encrypted_key,env.ERP_ENCRYPTION_KEY);const body={endpoint:row.endpoint,database:row.database_name,login:row.login,api_key:key,protocol:row.protocol};const testRequest=new Request(request.url,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),tested=await testOdooConnection(testRequest),testedPayload=await tested.clone().json() as {ok?:boolean;message?:string};if(!testedPayload.ok)return json(testedPayload,tested.status);const refreshedAt=new Date().toISOString();await env.DB.prepare("UPDATE erp_connections SET last_sync_at=? WHERE id=?").bind(refreshedAt,row.id).run();return json({ok:true,message:"Application synchronised with Odoo.",refreshedAt,connection:publicConnection(row)})}
 
 type OdooProtocol = "json2" | "jsonrpc" | "xmlrpc";
 
@@ -99,6 +112,8 @@ const worker = {
     }
 
     if (url.pathname === "/api/erp-connections/test") return testOdooConnection(request);
+    if (url.pathname === "/api/erp-connections") return connectionApi(request,env);
+    if (url.pathname === "/api/sync") return syncApi(request,env);
 
     return handler.fetch(request, env, ctx);
   },
