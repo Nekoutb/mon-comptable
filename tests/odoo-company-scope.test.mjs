@@ -31,3 +31,11 @@ test("AP queue excludes legacy providers and failed Claude documents can be retr
  assert.match(worker,/existing&&existing\.status!=="failed"/);
  assert.doesNotMatch(worker,/confidence:\{type:"number",minimum:/);
 });
+
+test("AP agent performs controlled Odoo matching and only creates drafts after review",()=>{
+ for(const model of ["res.partner","purchase.order","stock.picking","account.move","account.journal","purchase.order.line","ir.attachment"]) assert.match(worker,new RegExp(model.replace(".","\\.")));
+ assert.match(worker,/readyForDraft/);
+ assert.match(worker,/odoo_draft_created/);
+ assert.match(worker,/move_type:"in_invoice"/);
+ assert.doesNotMatch(worker,/action_post/);
+});
