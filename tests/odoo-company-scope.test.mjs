@@ -18,9 +18,10 @@ test("ERP screen uses the company-selection wizard",()=>{
  assert.match(page,/<CompanyErpWizard t=\{t\}/);
 });
 
-test("AP extraction uses the server-side Kimi connector",()=>{
- assert.match(worker,/KIMI_API_KEY/);
- assert.match(worker,/https:\/\/api\.moonshot\.ai\/v1\/chat\/completions/);
- assert.match(worker,/const AP_MODEL="kimi-k3"/);
+test("AP extraction uses the server-side Anthropic connector",()=>{
+ assert.match(worker,/ANTHROPIC_API_KEY/);
+ assert.match(worker,/https:\/\/api\.anthropic\.com\/v1\/messages/);
+ assert.match(worker,/const AP_MODEL="claude-sonnet-5"/);
+ assert.doesNotMatch(worker,/api\.moonshot\.ai/);
  assert.doesNotMatch(worker,/api\.openai\.com/);
 });
