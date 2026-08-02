@@ -11,13 +11,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .adapters import erp_adapter, ocr_adapter
+from .adapters import erp_adapter
 from .config import settings
+from .context import correlation_id_var
 from .database import Base, engine, get_db
+from .jobs import enqueue
 from .models import AccountingProposal, ApprovalAction, AuditLog, BackgroundJob, BankStatement, BankStatementLine, Document, InboundEmail, Invoice, InvoiceStatus, Journal, LegalEntity, Notification, StatementStatus, Supplier, Tenant, User
 from .schemas import ApprovalInput, InvoiceOut, InvoiceUpdate, LoginRequest, RejectInput, StatementOut, TokenResponse
 from .security import create_token, current_user, roles, verify_password
-from .services import audit, duplicate_check, generate_proposal, match_supplier, normalize_invoice_number, parse_bank_content, post_invoice
+from .services import LOCKED_STATUSES, audit, duplicate_check, generate_proposal, match_supplier, normalize_invoice_number, parse_bank_content, post_invoice, post_statement_to_erp
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -28,13 +30,17 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", openapi_url="/api/v1/openapi.json", docs_url="/api/docs", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://localhost:5173"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origin_list, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 @app.middleware("http")
 async def correlation(request: Request, call_next):
     cid = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
-    response = await call_next(request)
+    token = correlation_id_var.set(cid)
+    try:
+        response = await call_next(request)
+    finally:
+        correlation_id_var.reset(token)
     response.headers["X-Correlation-ID"] = cid
     return response
 
@@ -51,7 +57,13 @@ def health():
 
 @app.post("/api/v1/auth/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(func.lower(User.email) == payload.email.lower(), User.active.is_(True)))
+    query = select(User).where(func.lower(User.email) == payload.email.lower(), User.active.is_(True))
+    if payload.tenant:
+        query = query.join(Tenant, Tenant.id == User.tenant_id).where(Tenant.code == payload.tenant, Tenant.active.is_(True))
+    users = db.scalars(query).all()
+    if len(users) > 1:
+        raise HTTPException(409, "Email exists in several tenants; provide the tenant code")
+    user = users[0] if users else None
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
     return TokenResponse(access_token=create_token(user))
@@ -78,8 +90,14 @@ def entity_for(db: Session, user: User, entity_id: str | None) -> LegalEntity:
     return entity
 
 
-async def save_upload(file: UploadFile, entity: LegalEntity, user: User, db: Session) -> tuple[Document, bytes]:
-    allowed = {"application/pdf", "image/jpeg", "image/png", "image/tiff", "text/csv", "application/vnd.ms-excel", "text/plain"}
+INVOICE_MEDIA_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/tiff", "text/csv", "application/vnd.ms-excel", "text/plain"}
+# Bank statements additionally arrive as CAMT.053 XML or MT940 text, which browsers
+# and gateways commonly label as XML or a generic binary stream.
+STATEMENT_MEDIA_TYPES = INVOICE_MEDIA_TYPES | {"application/xml", "text/xml", "application/octet-stream"}
+STATEMENT_EXTENSIONS = {".csv", ".txt", ".sta", ".mt940", ".xml", ".camt"}
+
+
+async def save_upload(file: UploadFile, entity: LegalEntity, user: User, db: Session, allowed: set[str] = INVOICE_MEDIA_TYPES) -> tuple[Document, bytes]:
     if file.content_type not in allowed: raise HTTPException(415, "Unsupported or unsafe file type")
     content = await file.read(settings.max_upload_mb * 1024 * 1024 + 1)
     if len(content) > settings.max_upload_mb * 1024 * 1024: raise HTTPException(413, "File too large")
@@ -94,15 +112,16 @@ async def save_upload(file: UploadFile, entity: LegalEntity, user: User, db: Ses
 
 @app.post("/api/v1/invoices/upload", response_model=InvoiceOut)
 async def upload_invoice(file: UploadFile = File(...), entity_id: str | None = None, user: User = Depends(roles("accountant", "tenant_admin")), db: Session = Depends(get_db)):
-    entity = entity_for(db, user, entity_id); doc, content = await save_upload(file, entity, user, db)
+    entity = entity_for(db, user, entity_id); doc, _ = await save_upload(file, entity, user, db)
     duplicate_doc = db.scalar(select(Document).where(Document.tenant_id == user.tenant_id, Document.sha256 == doc.sha256, Document.id != doc.id))
     invoice = Invoice(tenant_id=user.tenant_id, entity_id=entity.id, document_id=doc.id, status=InvoiceStatus.DUPLICATE if duplicate_doc else InvoiceStatus.OCR_PENDING, duplicate_level="exact" if duplicate_doc else None, created_by=user.id)
     db.add(invoice); db.flush(); audit(db, user, "invoice_uploaded", "invoice", invoice.id, after={"filename": doc.filename, "sha256": doc.sha256})
-    if not duplicate_doc:
-        output = ocr_adapter.extract(doc.filename, content); invoice.ocr_output = {k: str(v) if isinstance(v, Decimal) else v for k, v in output.items()}; invoice.ocr_confidence = output["confidence"]
-        invoice.invoice_number = output["invoice_number"]; invoice.normalized_number = normalize_invoice_number(invoice.invoice_number); invoice.invoice_date = date.fromisoformat(output["invoice_date"]); invoice.currency = output["currency"]; invoice.net_amount = Decimal(output["net_amount"]); invoice.tax_amount = Decimal(output["tax_amount"]); invoice.gross_amount = Decimal(output["gross_amount"]); invoice.description = output["description"]; invoice.status = InvoiceStatus.REVIEW
-        audit(db, user, "ocr_completed", "invoice", invoice.id, after={"provider": "mock", "confidence": str(invoice.ocr_confidence)}, origin="automation")
-    db.commit(); db.refresh(invoice); return invoice
+    db.commit()
+    if invoice.status == InvoiceStatus.OCR_PENDING:
+        # Inline mode extracts before the response returns; rq mode defers to the worker
+        # and the invoice stays in ocr_pending until the job completes.
+        enqueue(user.tenant_id, "invoice_ocr", invoice.id)
+    db.refresh(invoice); return invoice
 
 
 @app.get("/api/v1/invoices", response_model=list[InvoiceOut])
@@ -118,9 +137,14 @@ def list_invoices(status: InvoiceStatus | None = None, limit: int = 50, offset: 
 def update_invoice(invoice_id: str, payload: InvoiceUpdate, user: User = Depends(roles("accountant", "tenant_admin")), db: Session = Depends(get_db)):
     invoice = db.scalar(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == user.tenant_id))
     if not invoice: raise HTTPException(404, "Invoice not found")
+    if invoice.status in LOCKED_STATUSES: raise HTTPException(409, f"Invoice is locked in status {invoice.status.value}")
     before = {k: str(getattr(invoice, k)) for k in payload.model_fields_set}
     for key, value in payload.model_dump(exclude_unset=True).items(): setattr(invoice, key, value)
     invoice.normalized_number = normalize_invoice_number(invoice.invoice_number); invoice.version += 1
+    proposal = db.scalar(select(AccountingProposal).where(AccountingProposal.invoice_id == invoice.id, AccountingProposal.tenant_id == user.tenant_id))
+    if proposal and proposal.validated and {"net_amount", "tax_amount", "gross_amount", "currency"} & payload.model_fields_set:
+        proposal.validated = False
+        audit(db, user, "proposal_invalidated", "invoice", invoice.id, reason="Invoice amounts changed after proposal", origin="automation")
     audit(db, user, "invoice_corrected", "invoice", invoice.id, before=before, after=payload.model_dump(mode="json", exclude_unset=True)); db.commit(); db.refresh(invoice); return invoice
 
 
@@ -150,6 +174,8 @@ def submit_invoice(invoice_id: str, user: User = Depends(roles("accountant")), d
     invoice = db.scalar(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == user.tenant_id))
     proposal = db.scalar(select(AccountingProposal).where(AccountingProposal.invoice_id == invoice_id, AccountingProposal.tenant_id == user.tenant_id))
     if not invoice or not proposal or not proposal.validated: raise HTTPException(409, "Validated proposal required")
+    if invoice.status != InvoiceStatus.REVIEW: raise HTTPException(409, f"Only invoices under review can be submitted (current status: {invoice.status.value})")
+    if invoice.duplicate_level in {"exact", "probable"}: raise HTTPException(409, "Unresolved duplicate blocks submission")
     invoice.status = InvoiceStatus.PENDING_APPROVAL; audit(db, user, "submitted_for_approval", "invoice", invoice.id); db.commit(); return {"status": invoice.status}
 
 
@@ -165,6 +191,7 @@ def approve(invoice_id: str, payload: ApprovalInput, user: User = Depends(roles(
 def reject(invoice_id: str, payload: RejectInput, user: User = Depends(roles("approver", "tenant_admin")), db: Session = Depends(get_db)):
     invoice = db.scalar(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == user.tenant_id))
     if not invoice: raise HTTPException(404, "Invoice not found")
+    if invoice.status != InvoiceStatus.PENDING_APPROVAL: raise HTTPException(409, "Invoice is not pending approval")
     invoice.status = InvoiceStatus.REVIEW; db.add(ApprovalAction(tenant_id=user.tenant_id, invoice_id=invoice.id, user_id=user.id, action="rejected", comment=payload.comment)); audit(db, user, "rejected", "invoice", invoice.id, reason=payload.comment); db.commit(); return {"status": invoice.status}
 
 
@@ -183,7 +210,8 @@ def invoice_audit(invoice_id: str, user: User = Depends(current_user), db: Sessi
 
 @app.post("/api/v1/bank-statements/upload", response_model=StatementOut)
 async def upload_statement(file: UploadFile = File(...), entity_id: str | None = None, journal_id: str | None = None, opening_balance: Decimal = 0, closing_balance: Decimal = 0, user: User = Depends(roles("accountant", "tenant_admin")), db: Session = Depends(get_db)):
-    entity = entity_for(db, user, entity_id); doc, content = await save_upload(file, entity, user, db)
+    if os.path.splitext(file.filename or "")[1].lower() not in STATEMENT_EXTENSIONS: raise HTTPException(415, "Unsupported bank statement extension")
+    entity = entity_for(db, user, entity_id); doc, content = await save_upload(file, entity, user, db, allowed=STATEMENT_MEDIA_TYPES)
     existing = db.scalar(select(BankStatement).where(BankStatement.tenant_id == user.tenant_id, BankStatement.checksum == doc.sha256))
     if existing: raise HTTPException(409, "Duplicate bank statement")
     if journal_id and not db.scalar(select(Journal).where(Journal.id == journal_id, Journal.tenant_id == user.tenant_id, Journal.entity_id == entity.id, Journal.kind == "bank")): raise HTTPException(422, "Invalid bank journal")
@@ -213,8 +241,9 @@ def validate_statement(statement_id: str, user: User = Depends(roles("accountant
 @app.post("/api/v1/bank-statements/{statement_id}/post")
 def post_statement(statement_id: str, idempotency_key: str = Header(..., alias="Idempotency-Key"), user: User = Depends(roles("poster", "tenant_admin")), db: Session = Depends(get_db)):
     statement = db.scalar(select(BankStatement).where(BankStatement.id == statement_id, BankStatement.tenant_id == user.tenant_id))
-    if not statement or statement.status != StatementStatus.VALIDATED: raise HTTPException(409, "Validated statement required")
-    response = erp_adapter.post_bank_statement({"statement_id": statement.id}, idempotency_key); statement.status = StatementStatus.IMPORTED; audit(db, user, "bank_statement_posted", "bank_statement", statement.id, after=response, origin="automation"); db.commit(); return response
+    if not statement: raise HTTPException(404, "Bank statement not found")
+    posting = post_statement_to_erp(db, statement, user, idempotency_key); db.commit()
+    return {"status": posting.status, "external_reference": posting.external_reference, "mocked": True}
 
 
 @app.get("/api/v1/dashboard")

@@ -200,12 +200,13 @@ class ERPPosting(Base):
     tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"), index=True)
     record_type: Mapped[str] = mapped_column(String(30))
     record_id: Mapped[str] = mapped_column(String(36), index=True)
-    idempotency_key: Mapped[str] = mapped_column(String(120), unique=True)
+    idempotency_key: Mapped[str] = mapped_column(String(120), index=True)
     mode: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(20))
     external_reference: Mapped[str | None] = mapped_column(String(120))
     response: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("tenant_id", "idempotency_key"),)
 
 
 class BankStatement(Base):

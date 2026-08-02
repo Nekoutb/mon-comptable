@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    tenant: str | None = Field(None, max_length=32, description="Tenant code, required when the email exists in several tenants")
 
 
 class TokenResponse(BaseModel):

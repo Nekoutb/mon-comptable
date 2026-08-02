@@ -1,98 +1,108 @@
-# vinext-starter
+# Mon Comptable
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+AI-powered bilingual (FR/EN) accounting assistant for **Accounts Payable** and
+**Treasury**, built for multi-tenant use. The interface is a vinext (Next.js
+compatible) app; the API is FastAPI + SQLAlchemy with PostgreSQL in production
+and SQLite for local development.
 
-## Prerequisites
+> Assistant comptable IA bilingue (FR/EN) pour les comptes fournisseurs et la
+> trésorerie. La documentation détaillée en français se trouve dans [`docs/`](docs/).
 
-- Node.js `>=22.13.0`
+## Modules
 
-## Quick Start
+- **Accounts Payable** — invoice intake (upload or inbound email webhook), OCR
+  extraction (background job), supplier matching, duplicate detection
+  (exact + probable), deterministic accounting proposal, four-eyes approval,
+  ERP draft and posting with tenant-scoped idempotency keys.
+- **Treasury** — bank statement upload (CSV, MT940, CAMT.053), parsing, line
+  duplicate control, opening/closing balance validation, ERP import.
+- **Foundation** — JWT auth with tenant-scoped roles (`accountant`, `approver`,
+  `poster`, `tenant_admin`), tenant isolation on every query, document storage,
+  append-only audit log with request correlation IDs, background job tracking.
+
+All ERP/OCR/email integrations are **mock adapters** — responses say so
+explicitly and no external service is ever contacted. See
+[docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
+
+## Quick start (Docker)
 
 ```bash
+cp .env.example .env   # then replace the placeholder secrets
+docker compose up --build
+```
+
+- Frontend: http://localhost:3000
+- API + OpenAPI docs: http://localhost:8000/api/docs
+- The api service runs `alembic upgrade head` before starting.
+
+Seed the demo tenant (one-off):
+
+```bash
+docker compose exec api python -m app.seed
+```
+
+## Quick start (local, no Docker)
+
+Backend (Python 3.13):
+
+```bash
+cd backend
+python -m venv .venv && .venv/Scripts/activate  # or source .venv/bin/activate
+pip install -r requirements.txt
+python -m app.seed
+uvicorn app.main:app --port 8000
+```
+
+Frontend (Node >= 22.13):
+
+```bash
+echo NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1 > .env
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+Without `NEXT_PUBLIC_API_URL` (or with the API down) the UI runs in a clearly
+labelled demo mode; once the API is reachable, sign in to load live data.
 
-## Included Shape
+## Demo accounts
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+Seeded by `python -m app.seed`, tenant code `akwa`, password `DemoPass2026!`:
 
-## Workspace Auth Headers
+| Email | Role |
+| --- | --- |
+| nadia@akwa.example | accountant |
+| approver@akwa.example | approver |
+| poster@akwa.example | poster |
+| admin@akwa.example | tenant_admin |
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+## Tests
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+cd backend && python -m pytest      # API, workflow, isolation and parser tests
+npm test                            # builds the frontend and checks rendered output
+npm run lint
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## Background jobs
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+`MC_BACKGROUND_MODE=inline` (default) executes jobs synchronously — invoice OCR
+completes before the upload response returns. `MC_BACKGROUND_MODE=rq` defers
+jobs to the Redis/RQ worker (`python -m app.worker`, included in
+docker-compose); uploads then return `ocr_pending` until the worker finishes.
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## Repository layout
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+- `app/` — vinext frontend (UI, i18n dictionary, typed API client)
+- `backend/app/` — FastAPI application (models, services, jobs, adapters, parsers)
+- `backend/migrations/` — Alembic migrations
+- `backend/tests/` — pytest suite
+- `docs/` — architecture, security notes and known limitations (French)
+- `worker/`, `build/`, `examples/` — vinext starter scaffolding kept for the
+  hosting platform; `.openai/hosting.json` is optional deployment metadata and
+  the build falls back to no bindings when it is absent
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Documentation
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — technical architecture (FR)
+- [docs/SECURITY.md](docs/SECURITY.md) — security notes and deployment checklist (FR)
+- [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) — current limitations (FR)
