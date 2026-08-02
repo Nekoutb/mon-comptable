@@ -34,3 +34,10 @@ test("includes a typed API boundary", async () => {
   assert.match(api, /Authorization: `Bearer/);
   assert.match(api, /getApiHealth/);
 });
+
+test("AP workspace contains invoice intake, email capture and Odoo draft controls", async () => {
+  const ap = await readFile(new URL("../app/ap-operations.tsx", import.meta.url), "utf8");
+  for (const control of ["unpostedApJournals", "apAgeing", "uploadInvoicePack", "emailInvoices", "purchaseOrderCheck", "deliveryNoteCheck", "vendorIdentification", "accountingProposal", "pushApDraft"])
+    assert.match(ap, new RegExp(control));
+  assert.doesNotMatch(ap, /AFR-2026-0842|BANK-REC-0731|CLOSE-2026-07/);
+});
