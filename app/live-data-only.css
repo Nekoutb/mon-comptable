@@ -1,0 +1,9 @@
+.company-switch,
+.profile,
+.notification,
+.hero-health,
+.metric-strip,
+.dashboard-grid,
+.agent-stats {
+  display: none !important;
+}

@@ -21,16 +21,7 @@ export type CampaignStatus =
   | "awaiting_controller"
   | "approved";
 
-export const sampleVendorInvoices: VendorInvoice[] = [
-  {id:"INV-2026-0811",supplier:"Africa Office SARL",dueDate:"2026-08-08",amount:1431000,currency:"XAF",approved:true,bankDetailsComplete:true},
-  {id:"INV-2026-0818",supplier:"Horizon Logistics",dueDate:"2026-08-13",amount:2850000,currency:"XAF",approved:true,bankDetailsComplete:true},
-  {id:"INV-2026-0820",supplier:"Cameroun Digital",dueDate:"2026-08-16",amount:975000,currency:"XAF",approved:true,bankDetailsComplete:true},
-  {id:"INV-2026-0822",supplier:"Bâtiments & Services",dueDate:"2026-08-17",amount:1680000,currency:"XAF",approved:true,bankDetailsComplete:true},
-  {id:"INV-2026-0824",supplier:"Transit Central",dueDate:"2026-08-20",amount:720000,currency:"XAF",approved:true,bankDetailsComplete:true},
-  {id:"INV-2026-0827",supplier:"Services Plus",dueDate:"2026-08-12",amount:540000,currency:"XAF",approved:false,bankDetailsComplete:true},
-  {id:"INV-2026-0829",supplier:"Énergie Conseil",dueDate:"2026-08-15",amount:380000,currency:"XAF",approved:true,paymentHold:true,bankDetailsComplete:true},
-  {id:"INV-2026-0831",supplier:"Atlas Maintenance",dueDate:"2026-08-14",amount:610000,currency:"XAF",approved:true,bankDetailsComplete:false},
-];
+export const sampleVendorInvoices: VendorInvoice[] = [];
 
 export function addUtcDays(date: Date, days: number) {
   const result = new Date(date);
