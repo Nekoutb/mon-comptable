@@ -39,3 +39,15 @@ test("AP agent performs controlled Odoo matching and only creates drafts after r
  assert.match(worker,/move_type:"in_invoice"/);
  assert.doesNotMatch(worker,/action_post/);
 });
+
+test("missing AP vendors can be onboarded with a controlled code",()=>{
+ assert.match(worker,/async function onboardApVendor/);
+ assert.match(worker,/supplier_rank:1/);
+ assert.match(worker,/Vendor code must use/);
+});
+
+test("treasury agent persists statements and sends bank lines to the selected Odoo journal",()=>{
+ assert.match(worker,/treasury_statements/);
+ assert.match(worker,/account\.bank\.statement\.line/);
+ assert.match(worker,/journal_id:statement\.journal_id/);
+});

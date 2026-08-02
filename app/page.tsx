@@ -4,6 +4,7 @@ import "./handoff.css";
 import {nextCampaign,type CampaignPolicy} from "./lib/campaign-engine";
 import InvoiceIntake from "./invoice-intake";
 import CompanyErpWizard from "./company-erp-wizard";
+import TreasuryAgent from "./treasury-agent";
 
 type Lang="en"|"fr"; type Route="control"|"cfo"|"controller"|"planningManager"|"agents"|"ap"|"ar"|"treasury"|"assets"|"gl"|"tax"|"planning"|"pricing"|"value"|"policies"|"campaigns"|"journals"|"approvals"|"documents"|"erp"|"audit"|"reports"|"admin"|"settings";
 type Connection={id:string;name:string;endpoint:string;database:string;login:string;company:string;companyId?:number|null;protocol:string;updatedAt:string;lastSyncAt?:string|null;connected:true};
@@ -35,7 +36,8 @@ function RouteBody({route,t,connection,onSaved}:{route:Route;t:typeof text.en;co
  if(route==="agents")return <Hierarchy t={t} focus={route}/>;
  if(route==="admin")return <AdminWorkspace t={t}/>;
  if(route==="ap")return <><InvoiceIntake/><FinanceData scope={route} t={t}/></>;
- if(["ar","treasury","assets","gl","tax"].includes(route))return <FinanceData scope={route} t={t}/>;
+ if(route==="treasury")return <TreasuryAgent/>;
+ if(["ar","assets","gl","tax"].includes(route))return <FinanceData scope={route} t={t}/>;
  const labels:Record<string,string[]>={control:["Approvals awaiting","Draft journals in ERP","Cash position","Open anomalies"],ap:["Unposted AP journals","AP ageing","Invoices received by email","Invoices awaiting processing"],ar:["Unposted AR journals","AR ageing","Receipts awaiting allocation","Overdue customers"],treasury:["Cash position","Bank journals","Unreconciled transactions","Payments awaiting approval"]};
  return <><Kpis t={t} labels={labels[route]||[nameFor(t,route),"Open items","Exceptions","Ready"]}/><Panel title={nameFor(t,route)}><Empty t={t}/></Panel></>
 }
