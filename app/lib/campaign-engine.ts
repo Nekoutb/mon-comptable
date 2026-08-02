@@ -1,0 +1,13 @@
+export type WeekendRule="prev"|"next"|"exec";
+export type CampaignPolicy={campaignDays:number[];horizonDays:number;weekendRule:WeekendRule;version:number};
+export type Invoice={id:string;dueDate:string;balance:number;approved:boolean;disputed?:boolean;paymentHold?:boolean;duplicateSuspect?:boolean;bankDetailsComplete:boolean;taxException?:boolean;relatedParty?:boolean};
+export type Classification="overdue"|"campaign-day"|"horizon"|"later";
+
+export const CAMPAIGN_STATUSES=["Scheduled","AP selection in progress","Awaiting AP review","Sent to Treasury","Treasury review in progress","Information requested","Awaiting Financial Controller approval","Approved for ERP preparation","Submitted to ERP","ERP draft created","Awaiting manual bank/ERP approval","Paid","Partially paid","Rejected","Cancelled","Failed","Reconciliation pending","Reconciled"] as const;
+
+export function addDays(date:Date,days:number){const out=new Date(date);out.setUTCDate(out.getUTCDate()+days);return out}
+export function businessDate(date:Date,rule:WeekendRule){const out=new Date(date),day=out.getUTCDay();if(day===0)out.setUTCDate(out.getUTCDate()+(rule==="prev"?-2:rule==="next"?1:0));if(day===6)out.setUTCDate(out.getUTCDate()+(rule==="prev"?-1:rule==="next"?2:0));return out}
+export function nextCampaign(from:Date,policy:CampaignPolicy){const days=[...new Set(policy.campaignDays)].filter(d=>d>=1&&d<=28).sort((a,b)=>a-b);if(!days.length)throw new Error("At least one campaign day is required");for(let month=0;month<3;month++)for(const day of days){const raw=new Date(Date.UTC(from.getUTCFullYear(),from.getUTCMonth()+month,day));const adjusted=businessDate(raw,policy.weekendRule);if(adjusted>=from)return{raw,adjusted,execution:policy.weekendRule==="exec"?businessDate(raw,"next"):adjusted,horizonEnd:addDays(adjusted,policy.horizonDays)}}throw new Error("No campaign date found")}
+export function blockReason(i:Invoice){if(!i.approved)return"Unapproved";if(i.disputed)return"Disputed";if(i.paymentHold)return"Payment hold";if(i.duplicateSuspect)return"Duplicate suspect";if(!i.bankDetailsComplete)return"Missing bank details";if(i.taxException)return"Tax exception";return null}
+export function classify(i:Invoice,campaignDate:Date,horizonDays:number):Classification{const due=new Date(`${i.dueDate}T00:00:00Z`),d=campaignDate.getTime(),end=addDays(campaignDate,horizonDays).getTime();return due.getTime()<d?"overdue":due.getTime()===d?"campaign-day":due.getTime()<=end?"horizon":"later"}
+export function campaignPool(invoices:Invoice[],campaignDate:Date,policy:CampaignPolicy){return invoices.map(invoice=>({invoice,classification:classify(invoice,campaignDate,policy.horizonDays),blocked:blockReason(invoice)})).filter(row=>row.classification!=="later")}

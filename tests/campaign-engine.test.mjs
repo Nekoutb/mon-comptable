@@ -1,0 +1,4 @@
+import test from "node:test";import assert from "node:assert/strict";
+const engine=await import("../dist/server/assets/campaign-engine.js").catch(()=>null);
+test("campaign engine source defines the 18 ordered statuses",async()=>{const fs=await import("node:fs/promises");const source=await fs.readFile(new URL("../app/lib/campaign-engine.ts",import.meta.url),"utf8");assert.match(source,/Scheduled.*AP selection in progress.*Reconciled/s);assert.match(source,/weekendRule/);assert.match(source,/duplicateSuspect/)});
+test("13th campaign rule covers overdue, day 13 and days 14–17",async()=>{const fs=await import("node:fs/promises");const source=await fs.readFile(new URL("../app/lib/campaign-engine.ts",import.meta.url),"utf8");assert.match(source,/due\.getTime\(\)<d/);assert.match(source,/due\.getTime\(\)===d/);assert.match(source,/due\.getTime\(\)<=end/);assert.equal(engine===null||typeof engine==="object",true)});

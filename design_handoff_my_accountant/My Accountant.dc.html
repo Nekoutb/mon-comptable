@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #e9edf3; }
+  * { box-sizing: border-box; }
+  *:focus-visible { outline: 2px solid #0d7d74; outline-offset: 2px; border-radius: 6px; }
+  a { color: #0d6f8f; text-decoration: none; }
+  a:hover { color: #0a5570; text-decoration: underline; }
+  input, select, button, textarea { font: inherit; color: inherit; }
+  ::selection { background: rgba(15,155,142,.22); }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+</helmet>
+<div style="{{ rootStyle }}">
+  <a href="#main" style="position:absolute;left:12px;top:-60px;z-index:99;padding:10px 16px;background:#0b1524;color:#fff;border-radius:10px;font-size:14px" style-focus="top:12px">{{ t.skip }}</a>
+
+  <header role="banner" style="position:sticky;top:0;z-index:40;background:var(--nav,rgba(11,21,36,.86));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border-bottom:1px solid rgba(255,255,255,.10);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 8px 30px rgba(6,14,26,.18)">
+    <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;flex-wrap:wrap">
+      <button type="button" onClick="{{ toggleNav }}" aria-label="{{ t.menu }}" style="display:var(--burger,none);align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;cursor:pointer">☰</button>
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,rgba(45,212,191,.95),rgba(13,110,140,.9));box-shadow:0 0 0 1px rgba(255,255,255,.22) inset,0 6px 16px rgba(13,110,140,.45);flex:none"></div>
+        <div style="min-width:0">
+          <div style="color:#fff;font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.1">My Accountant</div>
+          <div style="color:rgba(214,228,242,.72);font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.tagline }}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto">
+        <label style="display:flex;flex-direction:column;gap:2px">
+          <span style="color:rgba(214,228,242,.66);font-size:10px;text-transform:uppercase;letter-spacing:.08em">{{ t.tenant }}</span>
+          <select value="{{ tenant }}" onChange="{{ onTenant }}" style="min-height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;padding:4px 8px;font-size:13px;max-width:190px">
+            <sc-for list="{{ tenants }}" as="o" hint-placeholder-count="2"><option value="{{ o.id }}" style="color:#0b1524">{{ o.name }}</option></sc-for>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px">
+          <span style="color:rgba(214,228,242,.66);font-size:10px;text-transform:uppercase;letter-spacing:.08em">{{ t.entity }}</span>
+          <select value="{{ entity }}" onChange="{{ onEntity }}" style="min-height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;padding:4px 8px;font-size:13px;max-width:210px">
+            <sc-for list="{{ entities }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}" style="color:#0b1524">{{ o.name }}</option></sc-for>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:2px">
+          <span style="color:rgba(214,228,242,.66);font-size:10px;text-transform:uppercase;letter-spacing:.08em">{{ t.role }}</span>
+          <select value="{{ role }}" onChange="{{ onRole }}" style="min-height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);color:#fff;padding:4px 8px;font-size:13px;max-width:190px">
+            <sc-for list="{{ roles }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}" style="color:#0b1524">{{ o.name }}</option></sc-for>
+          </select>
+        </label>
+        <div style="display:flex;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.18);align-self:end">
+          <sc-for list="{{ langs }}" as="l" hint-placeholder-count="2">
+            <button type="button" onClick="{{ l.pick }}" aria-pressed="{{ l.on }}" style="{{ l.style }}">{{ l.label }}</button>
+          </sc-for>
+        </div>
+        <button type="button" onClick="{{ openSettingsDrawer }}" aria-label="{{ t.display }}" title="{{ t.display }}" style="min-width:44px;height:44px;align-self:end;border-radius:11px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#dbe7f5;cursor:pointer;font-size:15px">◐</button>
+        <button type="button" onClick="{{ goNotifications }}" style="position:relative;min-width:44px;height:44px;align-self:end;border-radius:11px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#dbe7f5;cursor:pointer;font-size:15px" aria-label="{{ t.notifications }}" title="{{ t.notifications }}">◔<span style="position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;border-radius:10px;background:#c0392b;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 5px;border:1px solid rgba(255,255,255,.35)">{{ notifCount }}</span></button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;padding:0 16px 10px;flex-wrap:wrap;font-size:12px;color:rgba(214,228,242,.80)">
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)"><span style="width:7px;height:7px;border-radius:5px;background:#34d399;flex:none"></span>{{ t.erpConnected }} · Odoo 17 · {{ erpDb }}</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)">{{ t.lastSync }} {{ lastSync }}</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)">{{ t.period }} {{ periodLabel }} · {{ t.accDate }} {{ todayLabel }}</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:8px;background:rgba(192,122,16,.20);border:1px solid rgba(240,180,90,.35);color:#ffd9a1">{{ t.closeState }}</span>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:flex-start;gap:0;width:100%">
+    <sc-if value="{{ navOpen }}">
+      <div onClick="{{ closeNav }}" aria-hidden="true" style="position:fixed;inset:0;z-index:45;background:rgba(6,14,26,.48)"></div>
+    </sc-if>
+    <nav aria-label="{{ t.primaryNav }}" style="{{ sidebarStyle }}">
+      <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="4">
+        <div style="padding:14px 12px 6px">
+          <div style="font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:rgba(198,215,233,.55);padding:0 8px 8px">{{ g.label }}</div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+              <button type="button" onClick="{{ it.go }}" aria-current="{{ it.current }}" style="{{ it.style }}">
+                <span style="width:20px;text-align:center;flex:none;opacity:.9;font-size:13px">{{ it.icon }}</span>
+                <span style="flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.label }}</span>
+                <span style="{{ it.badgeStyle }}">{{ it.badge }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      <div style="padding:12px;margin-top:auto">
+        <div style="border-radius:12px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+          <div style="font-size:11px;color:rgba(198,215,233,.62);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">{{ t.nextCampaign }}</div>
+          <div style="color:#fff;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">{{ campaignDateLabel }}</div>
+          <div style="color:rgba(198,215,233,.75);font-size:12px;margin-top:3px;line-height:1.45">{{ t.horizonTo }} {{ horizonEndLabel }}</div>
+          <button type="button" onClick="{{ goCampaign }}" style="margin-top:10px;width:100%;min-height:36px;border-radius:9px;border:1px solid rgba(45,212,191,.45);background:rgba(45,212,191,.16);color:#8ff0e3;font-size:12px;font-weight:600;cursor:pointer">{{ t.openCampaign }}</button>
+        </div>
+      </div>
+    </nav>
+
+    <main id="main" role="main" style="{{ mainStyle }}">
+      <div style="max-width:1560px;margin:0 auto;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.10em;color:#5b6b80">{{ crumb }}</div>
+            <h1 style="margin:4px 0 0;font-size:26px;line-height:1.15;letter-spacing:-.02em;color:#0b1524;font-weight:600">{{ pageTitle }}</h1>
+            <p style="margin:6px 0 0;font-size:14px;line-height:1.55;color:#48586c;max-width:74ch;text-wrap:pretty">{{ pageSub }}</p>
+          </div>
+        </div>
+        <div id="route-body" style="display:flex;flex-direction:column;gap:18px">
+
+          <sc-if value="{{ isControl }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:12px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+                <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px)) saturate(155%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(155%);border:1px solid rgba(255,255,255,.60);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 10px 28px rgba(11,21,36,.09)">
+                  <div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between">
+                    <div style="font-size:12px;color:#48586c;line-height:1.35;max-width:70%">{{ k.label }}</div>
+                    <span style="{{ k.chip.style }}"><span aria-hidden="true">{{ k.chip.icon }}</span>{{ k.chip.text }}</span>
+                  </div>
+                  <div style="margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em;color:#0b1524;font-variant-numeric:tabular-nums">{{ k.value }}</div>
+                  <div style="margin-top:3px;font-size:12px;color:#5b6b80">{{ k.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:16px;align-items:start">
+              <section aria-labelledby="prio-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:linear-gradient(180deg,rgba(245,248,251,.9),rgba(255,255,255,.6));border-bottom:1px solid rgba(11,21,36,.08)">
+                  <h2 id="prio-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.priorities }}</h2>
+                  <span style="font-size:12px;color:#5b6b80">{{ t.rankedBy }}</span>
+                </div>
+                <sc-for list="{{ priorities }}" as="p" hint-placeholder-count="5">
+                  <article style="padding:13px 16px;border-bottom:1px solid rgba(11,21,36,.07);display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                    <div style="flex:1;min-width:220px">
+                      <div style="font-size:14px;font-weight:600;color:#0b1524;line-height:1.35;text-wrap:pretty">{{ p.title }}</div>
+                      <div style="margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#5b6b80">
+                        <span>{{ p.agent }}</span><span aria-hidden="true">·</span>
+                        <span>{{ p.entity }}</span><span aria-hidden="true">·</span>
+                        <span style="font-family:'IBM Plex Mono',monospace">{{ p.doc }}</span>
+                      </div>
+                      <div style="margin-top:6px;font-size:12px;color:#48586c">{{ t.state }} <strong style="font-weight:600;color:#213247">{{ p.state }}</strong> · {{ t.nextApprover }} {{ p.approver }}</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
+                      <span style="{{ p.risk.style }}"><span aria-hidden="true">{{ p.risk.icon }}</span>{{ p.risk.text }}</span>
+                      <span style="font-size:12px;color:#5b6b80;font-variant-numeric:tabular-nums">{{ t.due }} {{ p.due }}</span>
+                      <button type="button" onClick="{{ p.go }}" style="min-height:34px;padding:6px 12px;border-radius:9px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.8);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.open }}</button>
+                    </div>
+                  </article>
+                </sc-for>
+              </section>
+
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <section aria-labelledby="ho-h" style="border-radius:16px;padding:14px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 12px 34px rgba(11,21,36,.10)">
+                  <h2 id="ho-h" style="margin:0 0 4px;font-size:15px;font-weight:600;color:#0b1524">{{ t.recentHandoffs }}</h2>
+                  <p style="margin:0 0 10px;font-size:12.5px;color:#48586c;line-height:1.5">{{ t.handoffNote }}</p>
+                  <sc-for list="{{ handoffs }}" as="h" hint-placeholder-count="4">
+                    <div style="display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-top:1px solid rgba(11,21,36,.08)">
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#5b6b80;padding-top:2px;width:42px;flex:none">{{ h.when }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;color:#0b1524"><strong style="font-weight:600">{{ h.from }}</strong> <span aria-hidden="true" style="color:#0f9b8e">→</span> <strong style="font-weight:600">{{ h.to }}</strong> · <span style="font-family:'IBM Plex Mono',monospace;font-size:12px">{{ h.subject }}</span></div>
+                        <div style="font-size:12.5px;color:#48586c;line-height:1.45;margin-top:2px">{{ h.reason }}</div>
+                        <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ t.confidence }} {{ h.conf }}</div>
+                      </div>
+                      <span style="{{ h.status.style }}"><span aria-hidden="true">{{ h.status.icon }}</span>{{ h.status.text }}</span>
+                    </div>
+                  </sc-for>
+                </section>
+
+                <section aria-labelledby="erp-h" style="border-radius:16px;padding:14px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 12px 34px rgba(11,21,36,.10)">
+                  <h2 id="erp-h" style="margin:0 0 10px;font-size:15px;font-weight:600;color:#0b1524">{{ t.recentSubs }}</h2>
+                  <sc-for list="{{ erpSubs }}" as="e" hint-placeholder-count="4">
+                    <div style="display:flex;gap:11px;align-items:center;padding:9px 0;border-top:1px solid rgba(11,21,36,.08);flex-wrap:wrap">
+                      <div style="flex:1;min-width:180px">
+                        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#213247">{{ e.ref }}</div>
+                        <div style="font-size:12.5px;color:#48586c">{{ e.type }} · {{ e.journal }} · {{ e.when }}</div>
+                      </div>
+                      <span style="{{ e.status.style }}"><span aria-hidden="true">{{ e.status.icon }}</span>{{ e.status.text }}</span>
+                    </div>
+                  </sc-for>
+                </section>
+              </div>
+            </div>
+
+            <section aria-labelledby="ag-h" style="display:flex;flex-direction:column;gap:12px">
+              <h2 id="ag-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.agentsTitle }}</h2>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:12px">
+                <sc-for list="{{ agentCards }}" as="a" hint-placeholder-count="6">
+                  <article style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px)) saturate(155%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(155%);border:1px solid rgba(255,255,255,.60);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 10px 28px rgba(11,21,36,.09);display:flex;flex-direction:column;gap:9px">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                      <div style="min-width:0">
+                        <div style="font-size:14.5px;font-weight:600;color:#0b1524">{{ a.name }}</div>
+                        <div style="font-size:12px;color:#5b6b80;line-height:1.4">{{ a.sub }}</div>
+                      </div>
+                      <span style="{{ a.status.style }}"><span aria-hidden="true">{{ a.status.icon }}</span>{{ a.status.text }}</span>
+                    </div>
+                    <div style="display:flex;gap:16px;font-size:12.5px;color:#48586c">
+                      <span>{{ t.queue }} <strong style="font-family:'IBM Plex Mono',monospace;color:#0b1524">{{ a.queue }}</strong></span>
+                      <span>{{ t.exceptions }} <strong style="font-family:'IBM Plex Mono',monospace;color:#0b1524">{{ a.exc }}</strong></span>
+                    </div>
+                    <div style="font-size:12.5px;color:#48586c;line-height:1.45;border-top:1px solid rgba(11,21,36,.08);padding-top:8px">{{ a.last }}</div>
+                    <button type="button" onClick="{{ a.go }}" style="align-self:flex-start;min-height:34px;padding:6px 12px;border-radius:9px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.75);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.openWorkspace }}</button>
+                  </article>
+                </sc-for>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ isAP }}">
+            <div style="border-radius:16px;padding:14px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 12px 34px rgba(11,21,36,.10);display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+              <div style="flex:1;min-width:260px">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#5b6b80">{{ t.selectionRule }}</div>
+                <p style="margin:6px 0 0;font-size:13.5px;line-height:1.6;color:#213247;max-width:70ch;text-wrap:pretty">{{ ruleSentence }}</p>
+                <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px">
+                  <span style="padding:4px 10px;border-radius:8px;background:rgba(15,155,142,.12);border:1px solid rgba(15,155,142,.28);color:#0a6b62;font-weight:600">{{ t.campaignDay }} {{ camDate }}</span>
+                  <span style="padding:4px 10px;border-radius:8px;background:rgba(29,95,181,.10);border:1px solid rgba(29,95,181,.24);color:#17538f;font-weight:600">{{ t.horizonN }} {{ horizonDays }} {{ t.days }} → {{ camEnd }}</span>
+                  <span style="padding:4px 10px;border-radius:8px;background:rgba(11,21,36,.05);border:1px solid rgba(11,21,36,.12);color:#40506a">{{ t.execDate }} {{ camExec }}</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:210px">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#5b6b80">{{ t.proposalTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ totalSel }}</div>
+                <div style="font-size:12.5px;color:#48586c">{{ selCount }} {{ t.invoices }} · {{ supCount }} {{ t.suppliers }}</div>
+                <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+                  <button type="button" onClick="{{ selectAll }}" style="min-height:36px;padding:7px 12px;border-radius:9px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.75);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.selectEligible }}</button>
+                  <button type="button" onClick="{{ clearAll }}" style="min-height:36px;padding:7px 12px;border-radius:9px;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.75);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.clear }}</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));gap:12px">
+              <div style="border-radius:14px;padding:13px 14px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 8px 24px rgba(11,21,36,.08)">
+                <div style="font-size:12px;color:#48586c">{{ t.overdueTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;color:#a3241a;margin-top:6px;font-variant-numeric:tabular-nums">{{ totalOverdue }}</div>
+              </div>
+              <div style="border-radius:14px;padding:13px 14px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 8px 24px rgba(11,21,36,.08)">
+                <div style="font-size:12px;color:#48586c">{{ t.dueInHorizon }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;color:#0a6b62;margin-top:6px;font-variant-numeric:tabular-nums">{{ totalHorizon }}</div>
+              </div>
+              <div style="border-radius:14px;padding:13px 14px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 8px 24px rgba(11,21,36,.08)">
+                <div style="font-size:12px;color:#48586c">{{ t.blockedTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;color:#8a5606;margin-top:6px;font-variant-numeric:tabular-nums">{{ totalBlocked }}</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:2px">{{ blockedCount }} {{ t.invoices }}</div>
+              </div>
+              <div style="border-radius:14px;padding:13px 14px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 8px 24px rgba(11,21,36,.08)">
+                <div style="font-size:12px;color:#48586c">{{ t.scopeLabel }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;color:#0b1524;margin-top:6px;font-variant-numeric:tabular-nums">{{ scopeCount }} / {{ poolCount }}</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:2px">{{ t.openItems }}</div>
+              </div>
+            </div>
+
+            <section aria-labelledby="sel-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;border-bottom:1px solid rgba(11,21,36,.08);flex-wrap:wrap">
+                <h2 id="sel-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.invoiceSelection }}</h2>
+                <span style="font-size:12px;color:#5b6b80">{{ t.tableHint }}</span>
+              </div>
+              <div style="overflow-x:auto">
+                <div role="table" aria-label="{{ t.invoiceSelection }}" style="min-width:940px">
+                  <div role="row" style="display:grid;grid-template-columns:36px minmax(150px,2fr) minmax(110px,1.2fr) 92px 128px 150px 150px 96px;gap:10px;align-items:center;padding:10px 12px;background:rgba(245,248,251,.95);position:sticky;top:0;z-index:2;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#5b6b80;font-weight:600;border-bottom:1px solid rgba(11,21,36,.10)">
+                    <div role="columnheader" aria-label="{{ t.select }}"></div>
+                    <div role="columnheader">{{ t.supplier }}</div>
+                    <div role="columnheader">{{ t.invoice }}</div>
+                    <div role="columnheader">{{ t.dueDate }}</div>
+                    <div role="columnheader">{{ t.window }}</div>
+                    <div role="columnheader" style="text-align:right">{{ t.openBalance }}</div>
+                    <div role="columnheader">{{ t.control }}</div>
+                    <div role="columnheader" style="text-align:right">{{ t.action }}</div>
+                  </div>
+                  <sc-for list="{{ apRows }}" as="r" hint-placeholder-count="8">
+                    <div role="row" style="{{ r.rowStyle }}">
+                      <div role="cell"><input type="checkbox" checked="{{ r.checked }}" disabled="{{ r.disabled }}" onChange="{{ r.toggle }}" aria-label="{{ r.ref }}" style="width:18px;height:18px;accent-color:#0c7c71;cursor:pointer" /></div>
+                      <div role="cell" style="min-width:0"><div style="font-weight:600;color:#0b1524;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.sup }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5b6b80">{{ r.supId }}</div></div>
+                      <div role="cell" style="min-width:0"><div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#213247;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.ref }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5b6b80;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.erpId }}</div></div>
+                      <div role="cell" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums;color:#213247">{{ r.due }}</div>
+                      <div role="cell"><span style="{{ r.cat.style }}"><span aria-hidden="true">{{ r.cat.icon }}</span>{{ r.cat.text }}</span></div>
+                      <div role="cell" style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#0b1524">{{ r.bal }}</div>
+                      <div role="cell"><span style="{{ r.state.style }}"><span aria-hidden="true">{{ r.state.icon }}</span>{{ r.state.text }}</span></div>
+                      <div role="cell" style="text-align:right"><button type="button" onClick="{{ r.defer }}" style="min-height:32px;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(255,255,255,.9);border:1px solid rgba(11,21,36,.14);color:#40506a;cursor:pointer">{{ t.defer }}</button></div>
+                    </div>
+                  </sc-for>
+                  <div role="row" style="display:grid;grid-template-columns:36px minmax(150px,2fr) minmax(110px,1.2fr) 92px 128px 150px 150px 96px;gap:10px;align-items:center;padding:12px;border-top:2px solid rgba(11,21,36,.14);background:rgba(245,248,251,.9);font-size:13px;font-weight:600;color:#0b1524">
+                    <div></div><div>{{ t.totalSelected }}</div><div></div><div></div><div></div>
+                    <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:14px;font-variant-numeric:tabular-nums">{{ totalSel }}</div>
+                    <div style="font-weight:400;font-size:12px;color:#5b6b80">{{ selCount }} {{ t.invoices }}</div><div></div>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(11,21,36,.08);background:rgba(250,252,254,.7)">
+                <button type="button" onClick="{{ apSend }}" style="{{ apSendStyle }}">{{ t.sendToTreasury }}</button>
+                <button type="button" onClick="{{ resetCampaign }}" style="{{ btnGhost }}">{{ t.recompute }}</button>
+                <span style="font-size:12.5px;color:#5b6b80;max-width:56ch;line-height:1.5">{{ t.apFootnote }}</span>
+              </div>
+            </section>
+            <p style="margin:0;font-size:12.5px;color:#5b6b80;line-height:1.5">{{ eurNote }}</p>
+          </sc-if>
+
+          <sc-if value="{{ isTreasury }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:12px">
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.cashAvailable }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;margin-top:7px;color:#0b1524;font-variant-numeric:tabular-nums">{{ cashAvail }}</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">BNK-SGC · BNK-AFB · CAI-KAI</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.campaignTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;margin-top:7px;color:#0b1524;font-variant-numeric:tabular-nums">{{ totalSel }}</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ selCount }} {{ t.invoices }}</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.cashAfter }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;margin-top:7px;color:#0a6b62;font-variant-numeric:tabular-nums">{{ cashAfter }}</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ t.afterExecution }}</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.unreconciled }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;margin-top:7px;color:#8a5606;font-variant-numeric:tabular-nums">23</div>
+                <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ t.oldest11 }}</div>
+              </div>
+            </div>
+
+            <section aria-labelledby="tr-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+              <div style="padding:14px 16px;border-bottom:1px solid rgba(11,21,36,.08);display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+                <div style="flex:1;min-width:240px">
+                  <h2 id="tr-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.receivedProposal }}</h2>
+                  <div style="margin-top:4px;font-size:12.5px;color:#48586c">{{ camId }} · {{ t.from }} AP Accountant · {{ t.status }} <span style="{{ statusChip.style }}"><span aria-hidden="true">{{ statusChip.icon }}</span>{{ statusChip.text }}</span></div>
+                </div>
+                <label style="display:flex;flex-direction:column;gap:3px;font-size:12px;color:#48586c">{{ t.payingJournal }}
+                  <select style="min-height:38px;border-radius:9px;border:1px solid rgba(11,21,36,.16);background:#fff;padding:6px 10px;font-size:13px;min-width:200px">
+                    <option>BNK-SGC · Société Générale</option>
+                    <option>BNK-AFB · Afriland First Bank</option>
+                    <option>CAI-KAI · Caisse centrale</option>
+                  </select>
+                </label>
+              </div>
+              <div style="overflow-x:auto">
+                <div role="table" aria-label="{{ t.receivedProposal }}" style="min-width:940px">
+                  <div role="row" style="display:grid;grid-template-columns:36px minmax(150px,2fr) minmax(110px,1.2fr) 92px 128px 150px 150px 96px;gap:10px;padding:10px 12px;background:rgba(245,248,251,.95);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#5b6b80;font-weight:600;border-bottom:1px solid rgba(11,21,36,.10)">
+                    <div></div><div>{{ t.supplier }}</div><div>{{ t.invoice }}</div><div>{{ t.dueDate }}</div><div>{{ t.window }}</div>
+                    <div style="text-align:right">{{ t.proposedAmount }}</div><div>{{ t.control }}</div><div style="text-align:right">{{ t.action }}</div>
+                  </div>
+                  <sc-for list="{{ trRows }}" as="r" hint-placeholder-count="6">
+                    <div role="row" style="{{ r.rowStyle }}">
+                      <div role="cell" aria-hidden="true" style="color:#8494a8;font-size:12px">›</div>
+                      <div role="cell" style="min-width:0"><div style="font-weight:600;color:#0b1524;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.sup }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5b6b80">{{ r.supId }}</div></div>
+                      <div role="cell" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#213247;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.ref }}</div>
+                      <div role="cell" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums;color:#213247">{{ r.due }}</div>
+                      <div role="cell"><span style="{{ r.cat.style }}"><span aria-hidden="true">{{ r.cat.icon }}</span>{{ r.cat.text }}</span></div>
+                      <div role="cell" style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#0b1524">{{ r.bal }}</div>
+                      <div role="cell"><span style="{{ r.state.style }}"><span aria-hidden="true">{{ r.state.icon }}</span>{{ r.state.text }}</span></div>
+                      <div role="cell" style="text-align:right"><button type="button" onClick="{{ r.defer }}" style="min-height:32px;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(255,255,255,.9);border:1px solid rgba(11,21,36,.14);color:#40506a;cursor:pointer">{{ t.defer }}</button></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(11,21,36,.08);background:rgba(250,252,254,.7)">
+                <button type="button" onClick="{{ trSubmit }}" style="{{ trSubmitStyle }}">{{ t.submitForApproval }}</button>
+                <button type="button" onClick="{{ trReturn }}" style="{{ btnDanger }}">{{ t.returnToAP }}</button>
+                <span style="font-size:12.5px;color:#5b6b80;max-width:56ch;line-height:1.5">{{ t.trFootnote }}</span>
+              </div>
+            </section>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:16px">
+              <section aria-labelledby="bj-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+                <h2 id="bj-h" style="margin:0;padding:13px 16px;font-size:15px;font-weight:600;color:#0b1524;border-bottom:1px solid rgba(11,21,36,.08)">{{ t.bankJournals }}</h2>
+                <sc-for list="{{ bankJournals }}" as="b" hint-placeholder-count="3">
+                  <div style="padding:12px 16px;border-bottom:1px solid rgba(11,21,36,.07);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                    <div style="flex:1;min-width:170px">
+                      <div style="font-size:13.5px;font-weight:600;color:#0b1524">{{ b.name }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#5b6b80">{{ b.code }} · {{ b.iban }}</div>
+                    </div>
+                    <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ b.balance }}</div>
+                    <span style="{{ b.status.style }}"><span aria-hidden="true">{{ b.status.icon }}</span>{{ b.status.text }}</span>
+                  </div>
+                </sc-for>
+              </section>
+
+              <section aria-labelledby="up-h" style="border-radius:16px;padding:16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+                <h2 id="up-h" style="margin:0 0 8px;font-size:15px;font-weight:600;color:#0b1524">{{ t.statementUpload }}</h2>
+                <div style="border:1.5px dashed rgba(11,21,36,.22);border-radius:13px;padding:20px;text-align:center;background:rgba(255,255,255,.5)">
+                  <div style="font-size:13.5px;color:#213247;font-weight:600">{{ t.dropStatement }}</div>
+                  <div style="font-size:12.5px;color:#5b6b80;margin-top:4px;line-height:1.5">{{ t.statementFormats }}</div>
+                  <button type="button" onClick="{{ uploadDemo }}" style="{{ btnGhost }};margin-top:11px">{{ t.chooseFile }}</button>
+                </div>
+                <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:#48586c"><span>SGC-2026-07.csv · 214 {{ t.lines }}</span><span style="{{ warnChip.style }}"><span aria-hidden="true">{{ warnChip.icon }}</span>{{ warnChip.text }}</span></div>
+                  <div style="font-size:12.5px;color:#5b6b80;line-height:1.5">{{ t.balanceCheck }}</div>
+                </div>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isController }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:12px">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+                <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px)) saturate(155%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(155%);border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                  <div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between">
+                    <div style="font-size:12px;color:#48586c;line-height:1.35;max-width:70%">{{ k.label }}</div>
+                    <span style="{{ k.chip.style }}"><span aria-hidden="true">{{ k.chip.icon }}</span>{{ k.chip.text }}</span>
+                  </div>
+                  <div style="margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ k.value }}</div>
+                  <div style="margin-top:3px;font-size:12px;color:#5b6b80">{{ k.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(400px,100%),1fr));gap:16px;align-items:start">
+              <section aria-labelledby="fc-app" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+                <div style="padding:14px 16px;border-bottom:1px solid rgba(11,21,36,.08)">
+                  <h2 id="fc-app" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.approveCampaign }} · {{ camId }}</h2>
+                  <div style="margin-top:5px;font-size:12.5px;color:#48586c">{{ camDate }} · {{ t.status }} <span style="{{ statusChip.style }}"><span aria-hidden="true">{{ statusChip.icon }}</span>{{ statusChip.text }}</span></div>
+                </div>
+                <div style="padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px">
+                  <div><div style="font-size:11.5px;color:#5b6b80">{{ t.campaignTotal }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ totalSel }}</div></div>
+                  <div><div style="font-size:11.5px;color:#5b6b80">{{ t.overdueTotal }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:#a3241a;font-variant-numeric:tabular-nums">{{ totalOverdue }}</div></div>
+                  <div><div style="font-size:11.5px;color:#5b6b80">{{ t.cashAfter }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:#0a6b62;font-variant-numeric:tabular-nums">{{ cashAfter }}</div></div>
+                  <div><div style="font-size:11.5px;color:#5b6b80">{{ t.thresholdLabel }}</div><div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ thresholdTxt }}</div></div>
+                </div>
+                <div style="padding:0 16px 12px">
+                  <sc-if value="{{ overThreshold }}"><div style="padding:9px 12px;border-radius:10px;background:rgba(196,138,26,.13);border:1px solid rgba(196,138,26,.30);color:#7a4d05;font-size:12.5px;line-height:1.5"><strong style="font-weight:600">▲ </strong>{{ t.aboveThreshold }}</div></sc-if>
+                </div>
+                <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ exceptions }}" as="x" hint-placeholder-count="4">
+                    <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:11px;background:rgba(11,21,36,.028);border:1px solid rgba(11,21,36,.07)">
+                      <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:600;color:#0b1524;line-height:1.4">{{ x.title }}</div>
+                        <div style="font-size:12.5px;color:#48586c;margin-top:2px;line-height:1.45">{{ x.detail }}</div>
+                      </div>
+                      <span style="{{ x.chip.style }}"><span aria-hidden="true">{{ x.chip.icon }}</span>{{ x.chip.text }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="padding:12px 16px;border-top:1px solid rgba(11,21,36,.08);background:rgba(250,252,254,.7);display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                  <button type="button" onClick="{{ fcApprove }}" style="{{ fcApproveStyle }}">{{ t.approveCampaign }}</button>
+                  <button type="button" onClick="{{ fcReject }}" style="{{ btnDanger }}">{{ t.rejectCampaign }}</button>
+                  <button type="button" onClick="{{ erpPush }}" style="{{ btnGhost }}">{{ t.createErpDraft }}</button>
+                </div>
+              </section>
+
+              <section aria-labelledby="fc-ag" style="border-radius:16px;padding:14px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+                <h2 id="fc-ag" style="margin:0 0 10px;font-size:15px;font-weight:600;color:#0b1524">{{ t.agentsTitle }}</h2>
+                <sc-for list="{{ agentCards }}" as="a" hint-placeholder-count="6">
+                  <div style="display:flex;gap:11px;align-items:center;padding:10px 0;border-top:1px solid rgba(11,21,36,.08);flex-wrap:wrap">
+                    <div style="flex:1;min-width:190px">
+                      <div style="font-size:13.5px;font-weight:600;color:#0b1524">{{ a.name }}</div>
+                      <div style="font-size:12px;color:#5b6b80;line-height:1.45">{{ a.last }}</div>
+                    </div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#40506a;font-variant-numeric:tabular-nums">{{ a.queue }} / {{ a.exc }}</div>
+                    <span style="{{ a.status.style }}"><span aria-hidden="true">{{ a.status.icon }}</span>{{ a.status.text }}</span>
+                    <button type="button" onClick="{{ a.go }}" style="min-height:34px;padding:6px 11px;border-radius:9px;font-size:12px;font-weight:600;background:rgba(255,255,255,.8);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.open }}</button>
+                  </div>
+                </sc-for>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPolicies }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:16px;align-items:start">
+              <section aria-labelledby="pol-h" style="border-radius:16px;padding:16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+                <h2 id="pol-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.policyTitle }}</h2>
+                <p style="margin:6px 0 14px;font-size:12.5px;color:#48586c;line-height:1.55;max-width:60ch">{{ t.policyNote }}</p>
+                <div style="display:flex;flex-direction:column;gap:13px">
+                  <label style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:#213247;font-weight:600">{{ t.campaignDaysL }}
+                    <input type="text" value="{{ campaignDays }}" onChange="{{ onDays }}" inputMode="numeric" style="min-height:42px;border-radius:10px;border:1px solid rgba(11,21,36,.16);background:rgba(255,255,255,.85);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:400" />
+                    <span style="font-weight:400;font-size:12px;color:#5b6b80">13,25</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:#213247;font-weight:600">{{ t.horizonL }}
+                    <input type="number" min="0" max="31" value="{{ horizonDays }}" onChange="{{ onHorizon }}" style="min-height:42px;border-radius:10px;border:1px solid rgba(11,21,36,.16);background:rgba(255,255,255,.85);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:400;max-width:140px" />
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:#213247;font-weight:600">{{ t.weekendL }}
+                    <select value="{{ weekendRule }}" onChange="{{ onWeekend }}" style="min-height:42px;border-radius:10px;border:1px solid rgba(11,21,36,.16);background:rgba(255,255,255,.85);padding:8px 12px;font-size:13.5px;font-weight:400">
+                      <sc-for list="{{ weekendOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+                    </select>
+                  </label>
+                </div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(11,21,36,.10);font-size:12px;color:#5b6b80">{{ t.versioned }}</div>
+              </section>
+
+              <section aria-labelledby="pol-e" style="border-radius:16px;padding:16px;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+                <h2 id="pol-e" style="margin:0 0 10px;font-size:15px;font-weight:600;color:#0b1524">{{ t.selectionRule }}</h2>
+                <p style="margin:0 0 12px;font-size:13.5px;line-height:1.6;color:#213247;text-wrap:pretty">{{ ruleSentence }}</p>
+                <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13px">
+                  <dt style="color:#5b6b80">{{ t.campaignDay }}</dt><dd style="margin:0;font-weight:600;color:#0b1524">{{ camDate }}</dd>
+                  <dt style="color:#5b6b80">{{ t.horizonN }}</dt><dd style="margin:0;font-weight:600;color:#0b1524">{{ camEnd }}</dd>
+                  <dt style="color:#5b6b80">{{ t.execDate }}</dt><dd style="margin:0;font-weight:600;color:#0b1524">{{ camExec }}</dd>
+                  <dt style="color:#5b6b80">{{ t.scopeLabel }}</dt><dd style="margin:0;font-weight:600;color:#0b1524;font-family:'IBM Plex Mono',monospace">{{ scopeCount }} / {{ poolCount }}</dd>
+                  <dt style="color:#5b6b80">{{ t.proposalTotal }}</dt><dd style="margin:0;font-weight:600;color:#0b1524;font-family:'IBM Plex Mono',monospace">{{ totalSel }}</dd>
+                </dl>
+                <div style="margin-top:14px;padding:11px 13px;border-radius:11px;background:rgba(29,95,181,.07);border:1px solid rgba(29,95,181,.20);font-size:12.5px;color:#17538f;line-height:1.55">{{ t.policyNote }}</div>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCampaigns }}">
+            <section aria-labelledby="cal-h" style="border-radius:16px;padding:16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+                <h2 id="cal-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">{{ t.calendar }}</h2>
+                <span style="font-size:13px;color:#48586c;text-transform:capitalize">{{ calMonth }}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px">
+                <sc-for list="{{ calDayNames }}" as="d" hint-placeholder-count="7">
+                  <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:#5b6b80;text-align:center;font-weight:600">{{ d.d }}</div>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+                <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+                  <div style="{{ c.style }}"><span style="font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ c.n }}</span><span style="{{ c.tagStyle }}">{{ c.tag }}</span></div>
+                </sc-for>
+              </div>
+            </section>
+
+            <section aria-labelledby="cl-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+              <h2 id="cl-h" style="margin:0;padding:13px 16px;font-size:15px;font-weight:600;color:#0b1524;border-bottom:1px solid rgba(11,21,36,.08)">{{ t.campaignList }}</h2>
+              <div style="overflow-x:auto">
+                <div role="table" aria-label="{{ t.campaignList }}" style="min-width:960px">
+                  <div role="row" style="display:grid;grid-template-columns:minmax(180px,1.5fr) 96px minmax(140px,1.2fr) 64px 64px 140px 140px 96px minmax(150px,1.2fr) 84px;gap:10px;padding:10px 14px;background:rgba(245,248,251,.95);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#5b6b80;font-weight:600;border-bottom:1px solid rgba(11,21,36,.10)">
+                    <div>{{ t.campaignId }}</div><div>{{ t.dueDate }}</div><div>{{ t.entity }}</div><div style="text-align:right">{{ t.invoices }}</div><div style="text-align:right">{{ t.suppliers }}</div><div style="text-align:right">{{ t.campaignTotal }}</div><div style="text-align:right">{{ t.overdueTotal }}</div><div>{{ t.payingJournal }}</div><div>{{ t.status }}</div><div style="text-align:right">{{ t.action }}</div>
+                  </div>
+                  <sc-for list="{{ campaignRows }}" as="c" hint-placeholder-count="4">
+                    <div role="row" style="display:grid;grid-template-columns:minmax(180px,1.5fr) 96px minmax(140px,1.2fr) 64px 64px 140px 140px 96px minmax(150px,1.2fr) 84px;gap:10px;align-items:center;padding:11px 14px;border-top:1px solid rgba(11,21,36,.07);font-size:13px">
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#213247;overflow:hidden;text-overflow:ellipsis">{{ c.id }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums">{{ c.date }}</div>
+                      <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#213247">{{ c.entity }}</div>
+                      <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ c.inv }}</div>
+                      <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums">{{ c.sup }}</div>
+                      <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;font-variant-numeric:tabular-nums;color:#0b1524">{{ c.total }}</div>
+                      <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;color:#a3241a">{{ c.overdue }}</div>
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#40506a">{{ c.bank }}</div>
+                      <div><span style="{{ c.status.style }}"><span aria-hidden="true">{{ c.status.icon }}</span>{{ c.status.text }}</span><div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ c.owner }}</div></div>
+                      <div style="text-align:right"><button type="button" onClick="{{ c.open }}" style="min-height:32px;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(255,255,255,.9);border:1px solid rgba(11,21,36,.14);color:#213247;cursor:pointer">{{ t.open }}</button></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ isCampaign }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.totalSelected }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;color:#0b1524;font-variant-numeric:tabular-nums">{{ totalSel }}</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.overdueTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;color:#a3241a;font-variant-numeric:tabular-nums">{{ totalOverdue }}</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.blockedTotal }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;color:#8a5606;font-variant-numeric:tabular-nums">{{ totalBlocked }}</div>
+              </div>
+              <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                <div style="font-size:12px;color:#48586c">{{ t.cashAfter }}</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:6px;color:#0a6b62;font-variant-numeric:tabular-nums">{{ cashAfter }}</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:16px;align-items:start">
+              <section aria-labelledby="wf-h" style="border-radius:16px;padding:15px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+                <h2 id="wf-h" style="margin:0 0 4px;font-size:15px;font-weight:600;color:#0b1524">{{ t.workflow }}</h2>
+                <div style="font-size:12.5px;color:#48586c;margin-bottom:10px">{{ camId }}</div>
+                <div style="display:flex;flex-direction:column;gap:2px;max-height:420px;overflow:auto">
+                  <sc-for list="{{ statusSteps }}" as="st" hint-placeholder-count="18">
+                    <div style="{{ st.style }}"><span aria-hidden="true" style="width:14px;flex:none">{{ st.mark }}</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.7;flex:none">{{ st.n }}</span><span>{{ st.label }}</span></div>
+                  </sc-for>
+                </div>
+              </section>
+
+              <section aria-labelledby="au-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+                <h2 id="au-h" style="margin:0;padding:13px 16px;font-size:15px;font-weight:600;color:#0b1524;border-bottom:1px solid rgba(11,21,36,.08)">{{ t.auditHistory }}</h2>
+                <sc-for list="{{ auditRows }}" as="a" hint-placeholder-count="4">
+                  <div style="padding:11px 16px;border-bottom:1px solid rgba(11,21,36,.07);display:flex;gap:12px;align-items:flex-start">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#5b6b80;flex:none;width:78px;line-height:1.5">{{ a.date }}<br />{{ a.time }}</div>
+                    <div style="min-width:0">
+                      <div style="font-size:13px;font-weight:600;color:#0b1524">{{ a.action }}</div>
+                      <div style="font-size:12.5px;color:#48586c;line-height:1.5;margin-top:2px;text-wrap:pretty">{{ a.detail }}</div>
+                      <div style="font-size:11.5px;color:#5b6b80;margin-top:3px">{{ a.actor }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;background:rgba(250,252,254,.7)">
+                  <button type="button" onClick="{{ trSubmit }}" style="{{ trSubmitStyle }}">{{ t.submitForApproval }}</button>
+                  <button type="button" onClick="{{ fcApprove }}" style="{{ fcApproveStyle }}">{{ t.approveCampaign }}</button>
+                  <button type="button" onClick="{{ erpPush }}" style="{{ btnGhost }}">{{ t.createErpDraft }}</button>
+                </div>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isErp }}">
+            <section aria-labelledby="erpw-h" style="border-radius:16px;padding:16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border:1px solid rgba(255,255,255,.58);box-shadow:0 12px 34px rgba(11,21,36,.10)">
+              <h2 id="erpw-h" style="margin:0;font-size:15px;font-weight:600;color:#0b1524">Odoo · {{ t.connectLive }}</h2>
+              <p style="margin:6px 0 14px;font-size:13px;color:#48586c;line-height:1.55;max-width:66ch">{{ t.erpIntro }}</p>
+              <div role="radiogroup" aria-label="{{ t.erpIntro }}" style="display:flex;gap:10px;flex-wrap:wrap">
+                <button type="button" role="radio" aria-checked="{{ erpModeSim }}" onClick="{{ pickSim }}" style="{{ simStyle }}">
+                  <div style="font-size:13.5px;font-weight:600">{{ t.simulator }}</div>
+                  <div style="font-size:12px;opacity:.85;line-height:1.45;margin-top:3px">{{ simHint }}</div>
+                </button>
+                <button type="button" role="radio" aria-checked="{{ erpModeLive }}" onClick="{{ pickLive }}" style="{{ liveStyle }}">
+                  <div style="font-size:13.5px;font-weight:600">{{ t.connectLive }}</div>
+                  <div style="font-size:12px;opacity:.85;line-height:1.45;margin-top:3px">{{ liveHint }}</div>
+                </button>
+              </div>
+
+              <sc-if value="{{ erpModeSim }}">
+                <div style="margin-top:14px;padding:13px 15px;border-radius:12px;background:rgba(29,95,181,.07);border:1px solid rgba(29,95,181,.20);font-size:13px;color:#17538f;line-height:1.6;max-width:70ch">{{ simExplain }}</div>
+              </sc-if>
+
+              <sc-if value="{{ erpModeLive }}">
+                <div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:14px">
+                  <sc-for list="{{ erpFields }}" as="f" hint-placeholder-count="6">
+                    <label style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:#213247">{{ f.label }}
+                      <input type="{{ f.type }}" value="{{ f.value }}" placeholder="{{ f.ph }}" autoComplete="off" style="min-height:42px;border-radius:10px;border:1px solid rgba(11,21,36,.16);background:rgba(255,255,255,.88);padding:8px 12px;font-size:13.5px;font-weight:400;font-family:'IBM Plex Mono',monospace" />
+                      <span style="font-weight:400;font-size:12px;color:#5b6b80;line-height:1.45">{{ f.hint }}</span>
+                    </label>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <button type="button" onClick="{{ runTest }}" style="{{ btnPrimary }}">{{ t.testConnection }}</button>
+                <button type="button" onClick="{{ uploadDemo }}" style="{{ btnGhost }}">{{ t.saveConnection }}</button>
+              </div>
+              <sc-if value="{{ erpTest }}">
+                <div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(31,122,77,.10);border:1px solid rgba(31,122,77,.26);max-width:74ch">
+                  <div style="font-size:13.5px;font-weight:600;color:#166b44">{{ erpTest.title }}</div>
+                  <div style="font-size:12.5px;color:#2c4a3c;line-height:1.55;margin-top:3px">{{ erpTest.body }}</div>
+                </div>
+              </sc-if>
+            </section>
+
+            <section aria-labelledby="erpc-h" style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+              <h2 id="erpc-h" style="margin:0;padding:13px 16px;font-size:15px;font-weight:600;color:#0b1524;border-bottom:1px solid rgba(11,21,36,.08)">{{ t.recentSubs }}</h2>
+              <sc-for list="{{ erpSubs }}" as="e" hint-placeholder-count="4">
+                <div style="padding:12px 16px;border-bottom:1px solid rgba(11,21,36,.07);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                  <div style="flex:1;min-width:190px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#213247">{{ e.ref }}</div>
+                    <div style="font-size:12.5px;color:#48586c">{{ e.type }} · {{ e.journal }} · {{ e.when }}</div>
+                  </div>
+                  <span style="{{ e.status.style }}"><span aria-hidden="true">{{ e.status.icon }}</span>{{ e.status.text }}</span>
+                </div>
+              </sc-for>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ isGeneric }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px">
+              <sc-for list="{{ generic.tiles }}" as="k" hint-placeholder-count="4">
+                <div style="border-radius:15px;padding:14px 15px;background:var(--card,rgba(255,255,255,.60));backdrop-filter:blur(var(--blur,18px)) saturate(155%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(155%);border:1px solid rgba(255,255,255,.60);box-shadow:0 10px 28px rgba(11,21,36,.09)">
+                  <div style="font-size:12px;color:#48586c;line-height:1.35">{{ k.label }}</div>
+                  <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;color:#0b1524;font-variant-numeric:tabular-nums">{{ k.value }}</div>
+                  <div style="margin-top:3px;font-size:12px;color:#5b6b80">{{ k.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <section style="border-radius:16px;overflow:hidden;background:#fff;border:1px solid rgba(11,21,36,.10);box-shadow:0 10px 30px rgba(11,21,36,.08)">
+              <div style="overflow-x:auto">
+                <div role="table" aria-label="{{ pageTitle }}" style="min-width:780px">
+                  <div role="row" style="{{ generic.grid }};background:rgba(245,248,251,.95);border-bottom:1px solid rgba(11,21,36,.10)">
+                    <sc-for list="{{ generic.cols }}" as="c" hint-placeholder-count="5"><div role="columnheader" style="{{ c.style }}">{{ c.label }}</div></sc-for>
+                  </div>
+                  <sc-for list="{{ generic.rows }}" as="r" hint-placeholder-count="5">
+                    <div role="row" style="{{ r.style }}">
+                      <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="5">
+                        <div role="cell" style="{{ c.style }}">
+                          <sc-if value="{{ c.chip }}"><span style="{{ c.chip.style }}"><span aria-hidden="true">{{ c.chip.icon }}</span>{{ c.chip.text }}</span></sc-if>
+                          {{ c.text }}
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </section>
+
+            <sc-for list="{{ generic.notes }}" as="n" hint-placeholder-count="1">
+              <div style="border-radius:14px;padding:14px 16px;background:var(--work,rgba(255,255,255,.70));backdrop-filter:blur(var(--blur,18px));-webkit-backdrop-filter:blur(var(--blur,18px));border:1px solid rgba(255,255,255,.58);box-shadow:0 10px 28px rgba(11,21,36,.09);max-width:80ch">
+                <div style="font-size:13.5px;font-weight:600;color:#0b1524">{{ n.h }}</div>
+                <p style="margin:5px 0 0;font-size:13px;color:#48586c;line-height:1.6;text-wrap:pretty">{{ n.p }}</p>
+              </div>
+            </sc-for>
+          </sc-if>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <sc-if value="{{ displayOpen }}">
+    <div style="position:fixed;inset:0;z-index:55;display:flex;justify-content:flex-end">
+      <div onClick="{{ closeDisplay }}" aria-hidden="true" style="position:absolute;inset:0;background:rgba(6,14,26,.42)"></div>
+      <aside role="dialog" aria-modal="true" aria-label="{{ t.display }}" style="position:relative;width:min(360px,92vw);height:100%;overflow:auto;padding:18px;background:rgba(248,250,252,.94);backdrop-filter:blur(26px) saturate(170%);-webkit-backdrop-filter:blur(26px) saturate(170%);border-left:1px solid rgba(255,255,255,.6);box-shadow:-20px 0 60px rgba(9,20,35,.28)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <h2 style="margin:0;font-size:16px;font-weight:600;color:#0b1524">{{ t.display }}</h2>
+          <button type="button" onClick="{{ closeDisplay }}" aria-label="{{ t.close }}" style="width:40px;height:40px;border-radius:11px;border:1px solid rgba(11,21,36,.14);background:rgba(255,255,255,.8);color:#40506a;cursor:pointer;font-size:15px">✕</button>
+        </div>
+        <p style="margin:8px 0 14px;font-size:12.5px;color:#48586c;line-height:1.55">{{ t.displayHint }}</p>
+        <div style="display:flex;flex-direction:column;gap:9px" role="radiogroup" aria-label="{{ t.glassDensity }}">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#5b6b80;font-weight:600">{{ t.glassDensity }}</div>
+          <sc-for list="{{ densityOpts }}" as="d" hint-placeholder-count="3">
+            <button type="button" role="radio" aria-checked="{{ d.checked }}" onClick="{{ d.pick }}" style="{{ d.style }}">
+              <div style="font-size:13.5px;font-weight:600">{{ d.name }}</div>
+              <div style="font-size:12px;opacity:.85;line-height:1.45;margin-top:2px">{{ d.hint }}</div>
+            </button>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:9px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#5b6b80;font-weight:600">{{ t.accessibility }}</div>
+          <button type="button" role="switch" aria-checked="{{ reduceTOn }}" onClick="{{ toggleReduceT }}" style="{{ reduceTStyle }}">
+            <span style="min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:600">{{ t.reduceTransparency }}</span>
+              <span style="display:block;font-size:12px;opacity:.85;line-height:1.45;margin-top:2px">{{ t.reduceTransparencyHint }}</span>
+            </span>
+            <span aria-hidden="true" style="{{ reduceTSwitch }}"><span style="{{ reduceTKnob }}"></span></span>
+          </button>
+          <div style="padding:11px 13px;border-radius:11px;background:rgba(29,95,181,.07);border:1px solid rgba(29,95,181,.20);font-size:12.5px;color:#17538f;line-height:1.55">{{ t.motionNote }}</div>
+        </div>
+      </aside>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ narrow }}">
+    <nav aria-label="{{ t.primaryNav }}" style="position:fixed;left:0;right:0;bottom:0;z-index:44;display:flex;align-items:stretch;background:rgba(11,21,36,.94);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -8px 30px rgba(6,14,26,.28);padding-bottom:env(safe-area-inset-bottom)">
+      <sc-for list="{{ bottomNav }}" as="b" hint-placeholder-count="5">
+        <button type="button" onClick="{{ b.go }}" aria-current="{{ b.current }}" style="{{ b.style }}">
+          <span aria-hidden="true" style="font-size:15px">{{ b.icon }}</span>
+          <span style="max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.label }}</span>
+        </button>
+      </sc-for>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div role="status" aria-live="polite" style="position:fixed;right:18px;bottom:18px;z-index:60;max-width:380px;padding:12px 14px;border-radius:13px;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(11,21,36,.10);box-shadow:0 18px 50px rgba(9,20,35,.22),0 1px 0 rgba(255,255,255,.9) inset">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="{{ toast.dot }}"></span>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;color:#0b1524">{{ toast.title }}</div>
+          <div style="font-size:12.5px;color:#48586c;line-height:1.5;margin-top:2px">{{ toast.body }}</div>
+        </div>
+        <button type="button" onClick="{{ closeToast }}" aria-label="{{ t.close }}" style="margin-left:auto;width:28px;height:28px;border:none;background:transparent;color:#5b6b80;cursor:pointer;font-size:15px">✕</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;language&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;en&quot;,&quot;fr&quot;],&quot;default&quot;:&quot;en&quot;,&quot;tsType&quot;:&quot;'en'|'fr'&quot;},&quot;glassDensity&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;airy&quot;,&quot;balanced&quot;,&quot;solid&quot;],&quot;default&quot;:&quot;balanced&quot;,&quot;tsType&quot;:&quot;'airy'|'balanced'|'solid'&quot;},&quot;reduceTransparency&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;campaignDays&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;13,25&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;horizonDays&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;min&quot;:0,&quot;max&quot;:31,&quot;tsType&quot;:&quot;number&quot;},&quot;weekendRule&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;prev&quot;,&quot;next&quot;,&quot;exec&quot;],&quot;default&quot;:&quot;prev&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = {
+    lang: this.props.language || 'en',
+    role: 'admin',
+    route: 'control',
+    density: this.props.glassDensity || 'balanced',
+    reduceT: !!this.props.reduceTransparency,
+    tenant: 'GKH',
+    entity: 'KAI',
+    navOpen: false,
+    toast: null,
+    selected: null,
+    deferred: {},
+    status: 2,
+    audit: [],
+    erpMode: 'live',
+    erpTest: null,
+    apQuery: '',
+    density0: null,
+    policy: {
+      days: this.props.campaignDays || '13,25',
+      horizon: this.props.horizonDays == null ? 4 : this.props.horizonDays,
+      weekendRule: this.props.weekendRule || 'prev'
+    }
+  };
+
+  NOW = new Date(2026, 7, 11);
+
+  componentDidMount() {
+    this._onR = () => {
+      if (this._raf) return;
+      this._raf = requestAnimationFrame(() => { this._raf = 0; this.setState({ w: window.innerWidth }); });
+    };
+    window.addEventListener('resize', this._onR);
+    this.setState({ w: window.innerWidth });
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onR); }
+
+  D = {
+    skip: ['Skip to main content', 'Aller au contenu principal'],
+    menu: ['Menu', 'Menu'],
+    tagline: ['Accounting control room', 'Salle de contrôle comptable'],
+    tenant: ['Tenant', 'Client'],
+    entity: ['Legal entity', 'Entité juridique'],
+    role: ['Role', 'Rôle'],
+    display: ['Display settings', 'Paramètres d’affichage'],
+    notifications: ['Notifications', 'Notifications'],
+    erpConnected: ['ERP connected', 'ERP connecté'],
+    lastSync: ['Last sync', 'Dernière synchro.'],
+    period: ['Period', 'Période'],
+    accDate: ['Accounting date', 'Date comptable'],
+    closeState: ['July 2026 close: 3 controls open', 'Clôture juillet 2026 : 3 contrôles ouverts'],
+    primaryNav: ['Primary navigation', 'Navigation principale'],
+    nextCampaign: ['Next payment campaign', 'Prochaine campagne'],
+    horizonTo: ['Selection horizon to', 'Horizon de sélection au'],
+    openCampaign: ['Open campaign', 'Ouvrir la campagne'],
+    close: ['Close', 'Fermer'],
+    priorities: ['Today’s priorities', 'Priorités du jour'],
+    rankedBy: ['Ranked by risk, then deadline', 'Classées par risque, puis échéance'],
+    state: ['State:', 'État :'],
+    nextApprover: ['next approver', 'approbateur suivant'],
+    due: ['Due', 'Échéance'],
+    open: ['Open', 'Ouvrir'],
+    recentHandoffs: ['Recent agent handoffs', 'Transferts récents entre agents'],
+    handoffNote: ['Agent-to-agent transfers. None of these is a human approval.', 'Transferts d’agent à agent. Aucun n’est une approbation humaine.'],
+    confidence: ['Confidence', 'Confiance'],
+    recentSubs: ['Recent ERP submissions', 'Soumissions ERP récentes'],
+    agentsTitle: ['Agents under supervision', 'Agents supervisés'],
+    queue: ['Queue', 'File'],
+    exceptions: ['Exceptions', 'Exceptions'],
+    openWorkspace: ['Open workspace', 'Ouvrir l’espace'],
+    selectionRule: ['Selection rule in force', 'Règle de sélection en vigueur'],
+    campaignDay: ['Campaign day', 'Jour de campagne'],
+    horizonN: ['Horizon', 'Horizon'],
+    days: ['days', 'jours'],
+    execDate: ['Execution', 'Exécution'],
+    proposalTotal: ['Proposal total', 'Total de la proposition'],
+    invoices: ['invoices', 'factures'],
+    suppliers: ['suppliers', 'fournisseurs'],
+    selectEligible: ['Select all eligible', 'Sélectionner tout l’éligible'],
+    clear: ['Clear', 'Tout désélectionner'],
+    overdueTotal: ['Overdue selected', 'Échu sélectionné'],
+    dueInHorizon: ['Due within horizon', 'Échéant dans l’horizon'],
+    blockedTotal: ['Blocked by controls', 'Bloqué par les contrôles'],
+    scopeLabel: ['In scope / open items', 'Périmètre / postes ouverts'],
+    openItems: ['open supplier invoices', 'factures fournisseurs ouvertes'],
+    invoiceSelection: ['AP invoice selection', 'Sélection des factures fournisseurs'],
+    tableHint: ['Blocked rows cannot be selected', 'Les lignes bloquées ne peuvent pas être sélectionnées'],
+    select: ['Select', 'Sélectionner'],
+    supplier: ['Supplier', 'Fournisseur'],
+    invoice: ['Invoice', 'Facture'],
+    dueDate: ['Due date', 'Échéance'],
+    window: ['Window', 'Fenêtre'],
+    openBalance: ['Open balance', 'Solde ouvert'],
+    control: ['Control', 'Contrôle'],
+    action: ['Action', 'Action'],
+    defer: ['Defer', 'Reporter'],
+    totalSelected: ['Total selected', 'Total sélectionné'],
+    sendToTreasury: ['Send proposal to Treasury', 'Transmettre à la trésorerie'],
+    recompute: ['Recompute from policy', 'Recalculer selon la politique'],
+    apFootnote: ['The handoff is structured data: campaign, entity, horizon, invoice and supplier ERP ids, risk flags and the AP recommendation.', 'Le transfert est structuré : campagne, entité, horizon, identifiants ERP facture et fournisseur, indicateurs de risque et recommandation.'],
+    cashAvailable: ['Available cash', 'Trésorerie disponible'],
+    campaignTotal: ['Campaign total', 'Total de la campagne'],
+    cashAfter: ['Cash after payment', 'Trésorerie après paiement'],
+    afterExecution: ['at execution date', 'à la date d’exécution'],
+    unreconciled: ['Unreconciled lines', 'Lignes non rapprochées'],
+    oldest11: ['oldest 11 days', 'la plus ancienne 11 jours'],
+    receivedProposal: ['Payment proposal received from AP', 'Proposition de paiement reçue des fournisseurs'],
+    from: ['from', 'de'],
+    status: ['Status', 'Statut'],
+    payingJournal: ['Paying bank journal', 'Journal de banque payeur'],
+    proposedAmount: ['Proposed amount', 'Montant proposé'],
+    submitForApproval: ['Submit for controller approval', 'Soumettre au contrôleur'],
+    returnToAP: ['Return to AP', 'Retourner aux fournisseurs'],
+    trFootnote: ['Approval prepares an unposted batch in Odoo. Posting stays a manual human action in the ERP.', 'L’approbation prépare un lot non validé dans Odoo. La validation reste une action humaine dans l’ERP.'],
+    bankJournals: ['Bank journals from Odoo', 'Journaux de banque issus d’Odoo'],
+    statementUpload: ['Bank statement upload', 'Dépôt de relevé bancaire'],
+    dropStatement: ['Drop a statement here', 'Déposez un relevé ici'],
+    statementFormats: ['CSV, OFX, MT940 or XLSX · normalised, then matched against BNK-SGC', 'CSV, OFX, MT940 ou XLSX · normalisé, puis rapproché de BNK-SGC'],
+    chooseFile: ['Choose file', 'Choisir un fichier'],
+    lines: ['lines', 'lignes'],
+    balanceCheck: ['Closing balance on the statement does not match the ERP journal by XAF 1 840 000. Difference sent to General Ledger as a handoff.', 'Le solde de clôture du relevé s’écarte du journal ERP de 1 840 000 XAF. Écart transmis à la comptabilité générale.'],
+    campaignId: ['Campaign', 'Campagne'],
+    workflow: ['Workflow', 'Flux de travail'],
+    auditHistory: ['Audit history', 'Historique d’audit'],
+    approveCampaign: ['Approve campaign', 'Approuver la campagne'],
+    rejectCampaign: ['Reject', 'Rejeter'],
+    createErpDraft: ['Create draft in Odoo', 'Créer le brouillon dans Odoo'],
+    thresholdLabel: ['Approval threshold', 'Seuil d’approbation'],
+    aboveThreshold: ['Above threshold — second approver required', 'Au-dessus du seuil — second approbateur requis'],
+    belowThreshold: ['Within threshold — single approver', 'Sous le seuil — un seul approbateur'],
+    calendar: ['Campaign calendar', 'Calendrier des campagnes'],
+    campaignList: ['Campaigns', 'Campagnes'],
+    policyTitle: ['Payment campaign policy', 'Politique de campagne de paiement'],
+    policyNote: ['Changes apply immediately to the open campaign and are recorded as a new policy version.', 'Les modifications s’appliquent immédiatement à la campagne ouverte et créent une nouvelle version de politique.'],
+    campaignDaysL: ['Campaign days of month', 'Jours de campagne du mois'],
+    horizonL: ['Forward horizon (days)', 'Horizon prospectif (jours)'],
+    weekendL: ['Weekend / holiday rule', 'Règle week-end / jour férié'],
+    versioned: ['Policy v7 · changed 09/08/2026 by A. Mballa', 'Politique v7 · modifiée le 09/08/2026 par A. Mballa'],
+    simulator: ['Simulator', 'Simulateur'],
+    connectLive: ['Connect live Odoo', 'Connexion Odoo réelle'],
+    testConnection: ['Test connection & permissions', 'Tester la connexion et les droits'],
+    saveConnection: ['Save connection', 'Enregistrer la connexion'],
+    erpIntro: ['Odoo is the priority integration. Choose how this entity connects.', 'Odoo est l’intégration prioritaire. Choisissez le mode de connexion de cette entité.'],
+    displayHint: ['Glass affects depth, never legibility. Dense financial tables stay opaque at every setting.', 'Le verre agit sur la profondeur, jamais sur la lisibilité. Les tableaux financiers denses restent opaques à tous les réglages.'],
+    glassDensity: ['Glass density', 'Densité du verre'],
+    accessibility: ['Accessibility', 'Accessibilité'],
+    reduceTransparency: ['Reduce transparency', 'Réduire la transparence'],
+    reduceTransparencyHint: ['Replaces every glass surface with an opaque one and removes blur.', 'Remplace chaque surface en verre par une surface opaque et supprime le flou.'],
+    motionNote: ['Motion follows your system setting: with “reduce motion” enabled, transitions are removed rather than shortened.', 'Les animations suivent votre réglage système : avec « réduire les animations », les transitions sont supprimées et non raccourcies.']
+  };
+
+  tx(k) { const e = this.D[k]; return e ? e[this.state.lang === 'fr' ? 1 : 0] : k; }
+  L(o) { return o ? o[this.state.lang === 'fr' ? 1 : 0] : ''; }
+  locale() { return this.state.lang === 'fr' ? 'fr-FR' : 'en-GB'; }
+  fmtDate(d, opt) { return new Intl.DateTimeFormat(this.locale(), opt || { day: '2-digit', month: 'short', year: 'numeric' }).format(d); }
+
+  go = (r) => () => this.setState({ route: r, navOpen: false });
+
+  nextCampaign() {
+    const p = this.state.policy;
+    const days = String(p.days).split(',').map(s => parseInt(s.trim(), 10)).filter(n => n >= 1 && n <= 31).sort((a, b) => a - b);
+    const list = days.length ? days : [13, 25];
+    const t = this.NOW;
+    let best = null;
+    for (let m = 0; m < 3 && !best; m++) {
+      for (const d of list) {
+        const cand = new Date(t.getFullYear(), t.getMonth() + m, d);
+        if (cand >= t) { best = cand; break; }
+      }
+    }
+    const raw = best || new Date(t.getFullYear(), t.getMonth() + 1, list[0]);
+    const adj = new Date(raw);
+    const wd = adj.getDay();
+    if (wd === 0 || wd === 6) {
+      if (p.weekendRule === 'prev') adj.setDate(adj.getDate() - (wd === 0 ? 2 : 1));
+      else if (p.weekendRule === 'next') adj.setDate(adj.getDate() + (wd === 0 ? 1 : 2));
+    }
+    const end = new Date(adj);
+    end.setDate(end.getDate() + Number(p.horizon || 0));
+    return { raw: raw, date: adj, end: end };
+  }
+
+  INV = [
+    { id: 'F-2041', sup: 'SOTRAC Matériaux SARL', supId: 'res.partner,4412', ref: 'SOT-2026-0418', erpId: 'account.move,88214', inv: '2026-05-29', due: '2026-06-28', amt: 18450000, bal: 18450000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2058', sup: 'Wouri Fret & Transit SA', supId: 'res.partner,4108', ref: 'WFT-11902', erpId: 'account.move,88301', inv: '2026-06-05', due: '2026-07-05', amt: 7280000, bal: 7280000, cur: 'XAF', appr: true, flags: ['related'] },
+    { id: 'F-2071', sup: 'Énergie Littoral SA', supId: 'res.partner,3980', ref: 'EL-2026-06-221', erpId: 'account.move,88377', inv: '2026-06-14', due: '2026-07-14', amt: 31900000, bal: 12400000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2083', sup: 'Ets Ngo Bassong & Fils', supId: 'res.partner,4501', ref: 'NBF-0731', erpId: 'account.move,88402', inv: '2026-06-22', due: '2026-07-22', amt: 4125000, bal: 4125000, cur: 'XAF', appr: true, flags: ['nobank'] },
+    { id: 'F-2090', sup: 'Sanaga Papeterie SARL', supId: 'res.partner,4620', ref: 'SP-2026-338', erpId: 'account.move,88450', inv: '2026-06-28', due: '2026-07-28', amt: 985000, bal: 985000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2094', sup: 'Nkolbisson Maintenance Ind.', supId: 'res.partner,4033', ref: 'NMI-2026-77', erpId: 'account.move,88466', inv: '2026-07-01', due: '2026-07-31', amt: 14600000, bal: 14600000, cur: 'XAF', appr: true, flags: ['dispute'] },
+    { id: 'F-2101', sup: 'Kribi Marine Services SA', supId: 'res.partner,4177', ref: 'KMS-9042', erpId: 'account.move,88512', inv: '2026-07-04', due: '2026-08-03', amt: 22750000, bal: 22750000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2108', sup: 'AgroSemences Bafoussam SARL', supId: 'res.partner,4288', ref: 'ASB-2026-155', erpId: 'account.move,88540', inv: '2026-07-06', due: '2026-08-05', amt: 6340000, bal: 6340000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2115', sup: 'Contrôle Technique Mbanga SARL', supId: 'res.partner,4702', ref: 'CTM-2026-19', erpId: 'account.move,88571', inv: '2026-07-09', due: '2026-08-08', amt: 2480000, bal: 2480000, cur: 'XAF', appr: true, flags: ['dup'] },
+    { id: 'F-2119', sup: 'SOTRAC Matériaux SARL', supId: 'res.partner,4412', ref: 'SOT-2026-0533', erpId: 'account.move,88588', inv: '2026-07-11', due: '2026-08-10', amt: 9870000, bal: 9870000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2126', sup: 'Wouri Fret & Transit SA', supId: 'res.partner,4108', ref: 'WFT-12044', erpId: 'account.move,88610', inv: '2026-07-14', due: '2026-08-13', amt: 15200000, bal: 15200000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2130', sup: 'Cabinet Fiscal Etoundi & Associés', supId: 'res.partner,4809', ref: 'CFE-2026-084', erpId: 'account.move,88633', inv: '2026-07-14', due: '2026-08-13', amt: 5600000, bal: 5600000, cur: 'XAF', appr: true, flags: ['tax'] },
+    { id: 'F-2134', sup: 'Énergie Littoral SA', supId: 'res.partner,3980', ref: 'EL-2026-07-260', erpId: 'account.move,88651', inv: '2026-07-15', due: '2026-08-13', amt: 28400000, bal: 28400000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2138', sup: 'Atlas Emballages SARL', supId: 'res.partner,4915', ref: 'AE-2026-401', erpId: 'account.move,88670', inv: '2026-07-16', due: '2026-08-13', amt: 3960000, bal: 3960000, cur: 'XAF', appr: false, flags: ['unappr'] },
+    { id: 'F-2142', sup: 'Sanaga Papeterie SARL', supId: 'res.partner,4620', ref: 'SP-2026-361', erpId: 'account.move,88688', inv: '2026-07-17', due: '2026-08-14', amt: 1240000, bal: 1240000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2147', sup: 'GlobalTech Rennes SAS', supId: 'res.partner,5102', ref: 'GTR-2026-0912', erpId: 'account.move,88702', inv: '2026-07-17', due: '2026-08-15', amt: 48600, bal: 48600, cur: 'EUR', appr: true, flags: [] },
+    { id: 'F-2151', sup: 'Kribi Marine Services SA', supId: 'res.partner,4177', ref: 'KMS-9130', erpId: 'account.move,88719', inv: '2026-07-18', due: '2026-08-16', amt: 17300000, bal: 17300000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2156', sup: 'Nkolbisson Maintenance Ind.', supId: 'res.partner,4033', ref: 'NMI-2026-91', erpId: 'account.move,88744', inv: '2026-07-19', due: '2026-08-17', amt: 8150000, bal: 8150000, cur: 'XAF', appr: true, flags: ['hold'] },
+    { id: 'F-2160', sup: 'AgroSemences Bafoussam SARL', supId: 'res.partner,4288', ref: 'ASB-2026-188', erpId: 'account.move,88760', inv: '2026-07-21', due: '2026-08-19', amt: 11750000, bal: 11750000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2164', sup: 'Ets Ngo Bassong & Fils', supId: 'res.partner,4501', ref: 'NBF-0844', erpId: 'account.move,88781', inv: '2026-07-23', due: '2026-08-21', amt: 2960000, bal: 2960000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2169', sup: 'Atlas Emballages SARL', supId: 'res.partner,4915', ref: 'AE-2026-455', erpId: 'account.move,88803', inv: '2026-07-26', due: '2026-08-25', amt: 6420000, bal: 6420000, cur: 'XAF', appr: true, flags: [] },
+    { id: 'F-2175', sup: 'GlobalTech Rennes SAS', supId: 'res.partner,5102', ref: 'GTR-2026-0988', erpId: 'account.move,88829', inv: '2026-08-03', due: '2026-09-02', amt: 22400, bal: 22400, cur: 'EUR', appr: true, flags: [] }
+  ];
+
+  BLOCKERS = { nobank: 1, dispute: 1, hold: 1, dup: 1, unappr: 1, tax: 1 };
+
+  FLAGTXT = {
+    nobank: ['Missing supplier bank details', 'Coordonnées bancaires manquantes'],
+    dispute: ['Disputed by operations', 'Litige signalé par l’exploitation'],
+    hold: ['Supplier on payment hold', 'Fournisseur bloqué au paiement'],
+    dup: ['Possible duplicate of CTM-2026-18', 'Doublon possible de CTM-2026-18'],
+    unappr: ['Not approved — draft in Odoo', 'Non approuvée — brouillon dans Odoo'],
+    tax: ['Withholding tax review open', 'Revue de retenue à la source ouverte'],
+    related: ['Related party — controller review', 'Partie liée — revue du contrôleur']
+  };
+
+  STATUSES = [
+    ['Scheduled', 'Planifiée'], ['AP selection in progress', 'Sélection fournisseurs en cours'],
+    ['Awaiting AP review', 'En attente de revue fournisseurs'], ['Sent to Treasury', 'Transmise à la trésorerie'],
+    ['Treasury review in progress', 'Revue trésorerie en cours'], ['Information requested', 'Information demandée'],
+    ['Awaiting Financial Controller approval', 'En attente d’approbation du contrôleur'],
+    ['Approved for ERP preparation', 'Approuvée pour préparation ERP'], ['Submitted to ERP', 'Soumise à l’ERP'],
+    ['ERP draft created', 'Brouillon ERP créé'], ['Awaiting manual bank/ERP approval', 'En attente de validation manuelle banque/ERP'],
+    ['Paid', 'Payée'], ['Partially paid', 'Partiellement payée'], ['Rejected', 'Rejetée'], ['Cancelled', 'Annulée'],
+    ['Failed', 'Échec'], ['Reconciliation pending', 'Rapprochement en attente'], ['Reconciled', 'Rapprochée']
+  ];
+
+  TONES = {
+    ok: ['#166b44', 'rgba(31,122,77,.13)', 'rgba(31,122,77,.28)', '✔'],
+    warn: ['#8a5606', 'rgba(196,138,26,.16)', 'rgba(196,138,26,.32)', '▲'],
+    risk: ['#a3241a', 'rgba(176,48,32,.12)', 'rgba(176,48,32,.28)', '■'],
+    info: ['#17538f', 'rgba(29,95,181,.12)', 'rgba(29,95,181,.26)', '●'],
+    odoo: ['#5244a8', 'rgba(123,108,217,.15)', 'rgba(123,108,217,.30)', '◆'],
+    teal: ['#0a6b62', 'rgba(15,155,142,.14)', 'rgba(15,155,142,.30)', '●'],
+    mute: ['#40506a', 'rgba(11,21,36,.06)', 'rgba(11,21,36,.14)', '–']
+  };
+
+  chip(text, tone) {
+    const c = this.TONES[tone] || this.TONES.mute;
+    return { text: text, icon: c[3], style: 'display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:600;line-height:1.5;white-space:nowrap;color:' + c[0] + ';background:' + c[1] + ';border:1px solid ' + c[2] };
+  }
+
+  money(n, cur) {
+    return new Intl.NumberFormat(this.locale(), { style: 'currency', currency: cur || 'XAF', maximumFractionDigits: (cur === 'EUR' ? 2 : 0), minimumFractionDigits: (cur === 'EUR' ? 2 : 0) }).format(n);
+  }
+
+  classify(inv, cam) {
+    const d = new Date(inv.due + 'T00:00:00');
+    const day = 86400000;
+    if (d < this.NOW) return { key: 'overdue', days: Math.round((this.NOW - d) / day) };
+    if (d.getTime() === cam.date.getTime()) return { key: 'onday', days: 0 };
+    if (d <= cam.end) return { key: 'horizon', days: 0 };
+    return { key: 'later', days: 0 };
+  }
+
+  blockersOf(inv) { return inv.flags.filter(f => this.BLOCKERS[f]); }
+
+  pool(cam) {
+    return this.INV.map(inv => {
+      const c = this.classify(inv, cam);
+      const bl = this.blockersOf(inv);
+      return { inv: inv, cat: c.key, overdueDays: c.days, blockers: bl, eligible: c.key !== 'later' && bl.length === 0 };
+    });
+  }
+
+  selectionMap(cam) {
+    if (this.state.selected) return this.state.selected;
+    const m = {};
+    this.pool(cam).forEach(r => { if (r.eligible) m[r.inv.id] = true; });
+    return m;
+  }
+
+  act = (statusIdx, actor, action, detail, toast) => () => {
+    const st = this.state;
+    const entry = { ts: new Date(2026, 7, 11, 9 + st.audit.length, 12 + st.audit.length * 3), actor: actor, action: action, detail: detail };
+    this.setState({ status: statusIdx, audit: st.audit.concat([entry]), toast: toast });
+  };
+
+  RATE = 655.957;
+  toXAF(n, cur) { return cur === 'EUR' ? n * this.RATE : n; }
+
+  buildScreens(cam, fr) {
+    const s = this.state, L = (o) => this.L(o), M = (n, c) => this.money(n, c);
+    const pool = this.pool(cam);
+    const sel = this.selectionMap(cam);
+    const inHorizon = pool.filter(r => r.cat !== 'later');
+    const sum = (arr) => arr.reduce((a, r) => a + this.toXAF(r.inv.bal, r.inv.cur), 0);
+    const selRows = inHorizon.filter(r => sel[r.inv.id] && !s.deferred[r.inv.id]);
+    const totalSel = sum(selRows);
+    const totalOverdue = sum(selRows.filter(r => r.cat === 'overdue'));
+    const totalHorizon = totalSel - totalOverdue;
+    const totalBlocked = sum(inHorizon.filter(r => r.blockers.length));
+    const totalDeferred = sum(inHorizon.filter(r => s.deferred[r.inv.id]));
+    const cash = 412500000;
+    const threshold = 50000000;
+    const suppliers = {}; selRows.forEach(r => { suppliers[r.inv.sup] = 1; });
+
+    const catChip = (r) => r.cat === 'overdue' ? this.chip(L(['Overdue ' + r.overdueDays + ' d', 'En retard ' + r.overdueDays + ' j']), 'risk')
+      : r.cat === 'onday' ? this.chip(L(['Due on campaign day', 'Échue le jour de campagne']), 'warn')
+      : r.cat === 'horizon' ? this.chip(L(['Within horizon', 'Dans l’horizon']), 'teal')
+      : this.chip(L(['Outside horizon', 'Hors horizon']), 'mute');
+
+    const row = (r, mode) => {
+      const i = r.inv;
+      const blocked = r.blockers.length > 0;
+      const deferred = !!s.deferred[i.id];
+      const on = !!sel[i.id] && !deferred;
+      return {
+        id: i.id, sup: i.sup, ref: i.ref, erpId: i.erpId, supId: i.supId,
+        due: this.fmtDate(new Date(i.due + 'T00:00:00'), { day: '2-digit', month: 'short' }),
+        amt: M(i.amt, i.cur), bal: M(i.bal, i.cur), cur: i.cur,
+        cat: catChip(r),
+        state: deferred ? this.chip(L(['Deferred', 'Reportée']), 'mute') : blocked ? this.chip(L(this.FLAGTXT[r.blockers[0]]), 'risk') : i.flags.indexOf('related') >= 0 ? this.chip(L(this.FLAGTXT.related), 'warn') : this.chip(L(['Ready', 'Prête']), 'ok'),
+        checked: on, disabled: blocked || deferred || mode === 'ro',
+        toggle: () => { const m = Object.assign({}, sel); if (m[i.id]) delete m[i.id]; else m[i.id] = true; this.setState({ selected: m }); },
+        defer: () => { const d = Object.assign({}, s.deferred); d[i.id] = 'cash'; this.setState({ deferred: d, toast: { title: L(['Invoice deferred', 'Facture reportée']), body: i.ref + ' — ' + L(['moved to the next campaign, reason recorded in the audit trail.', 'reportée à la prochaine campagne, motif enregistré dans la piste d’audit.']) } }); },
+        rowStyle: 'display:grid;grid-template-columns:36px minmax(150px,2fr) minmax(110px,1.2fr) 92px 128px 150px 150px 96px;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid rgba(11,21,36,.07);font-size:13px;'
+          + (blocked ? 'background:rgba(176,48,32,.045)' : deferred ? 'background:rgba(11,21,36,.035);opacity:.72' : on ? 'background:rgba(15,155,142,.05)' : '')
+      };
+    };
+
+    const statusSteps = this.STATUSES.map((st, idx) => {
+      const n = idx + 1, done = n < s.status, cur = n === s.status;
+      return {
+        n: String(n).padStart(2, '0'), label: L(st),
+        style: 'display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:9px;font-size:12.5px;'
+          + (cur ? 'background:rgba(15,155,142,.13);border:1px solid rgba(15,155,142,.30);color:#0a5f57;font-weight:600'
+            : done ? 'color:#40506a;border:1px solid transparent' : 'color:#5b6b80;border:1px solid transparent'),
+        mark: done ? '✔' : cur ? '●' : '○'
+      };
+    });
+
+    const seedAudit = [
+      { ts: new Date(2026, 7, 11, 6, 2), actor: 'AP Accountant · agent', action: L(['Campaign opened', 'Campagne ouverte']), detail: L(['Policy v7 applied: days 13 & 25, horizon 4 days, weekend rule “previous business day”.', 'Politique v7 appliquée : jours 13 et 25, horizon 4 jours, règle week-end « jour ouvré précédent ».']) },
+      { ts: new Date(2026, 7, 11, 6, 3), actor: 'AP Accountant · agent', action: L(['Selection computed', 'Sélection calculée']), detail: L([inHorizon.length + ' invoices in scope, ' + inHorizon.filter(r => r.blockers.length).length + ' blocked by control rules.', inHorizon.length + ' factures dans le périmètre, ' + inHorizon.filter(r => r.blockers.length).length + ' bloquées par les règles de contrôle.']) },
+      { ts: new Date(2026, 7, 11, 7, 41), actor: 'Tax Accountant · agent', action: L(['Handoff received', 'Transfert reçu']), detail: 'CFE-2026-084 — ' + L(['withholding tax 5.5% under review, invoice held out of the campaign.', 'retenue à la source 5,5 % en cours d’examen, facture exclue de la campagne.']) }
+    ];
+    const auditRows = seedAudit.concat(s.audit).map(a => ({
+      time: new Intl.DateTimeFormat(this.locale(), { hour: '2-digit', minute: '2-digit' }).format(a.ts),
+      date: this.fmtDate(a.ts, { day: '2-digit', month: 'short' }),
+      actor: a.actor, action: a.action, detail: a.detail
+    }));
+
+    const can = (r) => s.role === 'admin' || s.role === r;
+    const btn = (kind) => 'display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 16px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;transition:transform 120ms cubic-bezier(.22,1,.36,1),box-shadow 160ms;'
+      + (kind === 'primary' ? 'background:linear-gradient(180deg,#12a294,#0c7c71);color:#fff;border:1px solid rgba(6,80,72,.55);box-shadow:0 1px 0 rgba(255,255,255,.30) inset,0 8px 22px rgba(12,124,113,.30)'
+        : kind === 'danger' ? 'background:rgba(176,48,32,.10);color:#8f2016;border:1px solid rgba(176,48,32,.30)'
+          : 'background:rgba(255,255,255,.72);color:#213247;border:1px solid rgba(11,21,36,.14);box-shadow:0 1px 0 rgba(255,255,255,.8) inset');
+    const dis = 'display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 16px;border-radius:11px;font-size:13.5px;font-weight:600;background:rgba(11,21,36,.05);color:#8494a8;border:1px solid rgba(11,21,36,.10);cursor:not-allowed';
+
+    const kpi = (label, value, meta, tone) => ({ label: L(label), value: value, meta: L(meta), chip: this.chip(L(tone[0]), tone[1]) });
+
+    return {
+      camId: 'CMP-2026-08-13-KAI',
+      camDate: this.fmtDate(cam.date, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
+      camRaw: this.fmtDate(cam.raw, { weekday: 'long', day: '2-digit', month: 'long' }),
+      camAdjusted: cam.raw.getTime() !== cam.date.getTime(),
+      camEnd: this.fmtDate(cam.end, { weekday: 'long', day: '2-digit', month: 'long' }),
+      camExec: this.fmtDate(new Date(cam.date.getTime() + 86400000), { day: '2-digit', month: 'long' }),
+      horizonDays: String(s.policy.horizon),
+      campaignDays: s.policy.days,
+      statusChip: this.chip(L(this.STATUSES[s.status - 1]), s.status >= 12 ? 'ok' : s.status >= 8 ? 'odoo' : 'info'),
+      statusSteps, auditRows,
+
+      kpis: [
+        kpi(['Awaiting human approval', 'En attente d’approbation'], '7', ['2 above threshold', '2 au-dessus du seuil'], [['Action', 'Action'], 'risk']),
+        kpi(['Draft journals in ERP', 'Écritures brouillon ERP'], '14', ['none posted', 'aucune validée'], [['Draft only', 'Brouillon'], 'odoo']),
+        kpi(['Overdue supplier invoices', 'Factures fournisseurs échues'], M(sum(pool.filter(r => r.cat === 'overdue')), 'XAF'), ['6 invoices, 5 suppliers', '6 factures, 5 fournisseurs'], [['Overdue', 'Échu'], 'risk']),
+        kpi(['Cash position', 'Position de trésorerie'], M(cash, 'XAF'), ['3 bank journals', '3 journaux de banque'], [['Live', 'Temps réel'], 'ok']),
+        kpi(['Unreconciled bank lines', 'Lignes bancaires non rapprochées'], '23', ['oldest 11 d', 'plus ancienne 11 j'], [['Review', 'À revoir'], 'warn']),
+        kpi(['Open anomalies', 'Anomalies ouvertes'], '5', ['1 escalated', '1 escaladée'], [['Escalated', 'Escaladée'], 'warn'])
+      ],
+
+      priorities: [
+        { title: L(['Approve payment campaign ' + M(totalSel, 'XAF'), 'Approuver la campagne de paiement ' + M(totalSel, 'XAF')]), agent: L(['Financial Controller', 'Contrôleur financier']), due: this.fmtDate(cam.date, { day: '2-digit', month: 'short' }), risk: this.chip(L(['High', 'Élevé']), 'risk'), entity: 'Kribi Agro-Industries', doc: this.camIdDoc, state: L(this.STATUSES[s.status - 1]), approver: 'A. Mballa', go: this.go('campaign') },
+        { title: L(['Resolve withholding tax on CFE-2026-084', 'Résoudre la retenue à la source sur CFE-2026-084']), agent: L(['Tax Accountant', 'Comptable fiscaliste']), due: '13 Aug', risk: this.chip(L(['Medium', 'Moyen']), 'warn'), entity: 'Kribi Agro-Industries', doc: 'CFE-2026-084.pdf', state: L(['Handoff open', 'Transfert ouvert']), approver: 'N. Etoundi', go: this.go('tax') },
+        { title: L(['Supplier bank details missing — NBF-0731', 'Coordonnées bancaires manquantes — NBF-0731']), agent: L(['AP Accountant', 'Comptable fournisseurs']), due: '12 Aug', risk: this.chip(L(['High', 'Élevé']), 'risk'), entity: 'Kribi Agro-Industries', doc: 'NBF-0731.pdf', state: L(['Blocked', 'Bloquée']), approver: L(['AP supervisor', 'Superviseur fournisseurs']), go: this.go('ap') },
+        { title: L(['Post July depreciation — draft ready', 'Valider l’amortissement de juillet — brouillon prêt']), agent: L(['Fixed Assets Accountant', 'Comptable immobilisations']), due: '14 Aug', risk: this.chip(L(['Low', 'Faible']), 'info'), entity: 'Kribi Logistique SA', doc: 'FA-DEP-2026-07', state: L(['Draft in Odoo', 'Brouillon dans Odoo']), approver: 'C. Fokou', go: this.go('assets') },
+        { title: L(['23 unidentified bank lines — SGC current account', '23 lignes bancaires non identifiées — compte SGC']), agent: L(['Treasury Accountant', 'Comptable trésorerie']), due: '13 Aug', risk: this.chip(L(['Medium', 'Moyen']), 'warn'), entity: 'Kribi Agro-Industries', doc: 'SGC-2026-07.csv', state: L(['Reconciliation pending', 'Rapprochement en attente']), approver: 'M. Ateba', go: this.go('treasury') }
+      ],
+
+      agentCards: [
+        { name: L(['Financial Controller', 'Contrôleur financier']), sub: L(['Orchestration & control layer', 'Couche d’orchestration et de contrôle']), status: this.chip(L(['Supervising', 'En supervision']), 'teal'), queue: '4', exc: '3', last: L(['Escalated NMI-2026-77 dispute to AP', 'Litige NMI-2026-77 escaladé aux fournisseurs']), go: this.go('controller'), lead: true },
+        { name: L(['AP Accountant', 'Comptable fournisseurs']), sub: L(['Supplier invoices & payment readiness', 'Factures fournisseurs et préparation des paiements']), status: this.chip(L(['Working', 'En cours']), 'info'), queue: '12', exc: '5', last: L(['Sent 11 invoices to Treasury review', '11 factures transmises à la trésorerie']), go: this.go('ap') },
+        { name: L(['Treasury Accountant', 'Comptable trésorerie']), sub: L(['Cash, banks, statements, payments', 'Trésorerie, banques, relevés, paiements']), status: this.chip(L(['Awaiting input', 'En attente']), 'warn'), queue: '3', exc: '1', last: L(['Requested clarification on WFT-12044', 'Clarification demandée sur WFT-12044']), go: this.go('treasury') },
+        { name: L(['Fixed Assets Accountant', 'Comptable immobilisations']), sub: L(['Capitalisation & depreciation', 'Immobilisation et amortissement']), status: this.chip(L(['Idle', 'Inactif']), 'mute'), queue: '0', exc: '0', last: L(['July depreciation drafted', 'Amortissement de juillet préparé']), go: this.go('assets') },
+        { name: L(['General Ledger Accountant', 'Comptable général']), sub: L(['Journals, accruals, close', 'Écritures, provisions, clôture']), status: this.chip(L(['Working', 'En cours']), 'info'), queue: '2', exc: '2', last: L(['Suspense account 471000 cleared', 'Compte d’attente 471000 apuré']), go: this.go('gl') },
+        { name: L(['Tax Accountant', 'Comptable fiscaliste']), sub: L(['VAT, WHT, filing calendar', 'TVA, RAS, calendrier déclaratif']), status: this.chip(L(['Blocked', 'Bloqué']), 'risk'), queue: '1', exc: '1', last: L(['Awaiting tax clearance certificate', 'Attestation de conformité fiscale attendue']), go: this.go('tax') }
+      ],
+
+      handoffs: [
+        { from: 'AP', to: L(['Treasury', 'Trésorerie']), subject: this.camIdDoc, reason: L(['Validated payment proposal, ' + selRows.length + ' invoices', 'Proposition de paiement validée, ' + selRows.length + ' factures']), when: '06:04', conf: '0.94', status: this.chip(L(['Delivered', 'Transmis']), 'ok') },
+        { from: 'AP', to: L(['Tax', 'Fiscalité']), subject: 'CFE-2026-084', reason: L(['Withholding tax treatment unclear', 'Traitement de la retenue à la source incertain']), when: '07:41', conf: '0.61', status: this.chip(L(['Open', 'Ouvert']), 'warn') },
+        { from: L(['Treasury', 'Trésorerie']), to: 'AP', subject: 'WFT-12044', reason: L(['Beneficiary bank account changed 4 days ago', 'Compte bancaire bénéficiaire modifié il y a 4 jours']), when: '08:12', conf: '0.88', status: this.chip(L(['Returned', 'Retourné']), 'risk') },
+        { from: L(['Fixed Assets', 'Immobilisations']), to: L(['General Ledger', 'Comptabilité générale']), subject: 'FA-DEP-2026-07', reason: L(['Monthly depreciation proposal', 'Proposition d’amortissement mensuel']), when: '05:30', conf: '0.97', status: this.chip(L(['Accepted', 'Accepté']), 'ok') }
+      ],
+
+      erpSubs: [
+        { ref: 'account.move,88651', type: L(['Supplier invoice', 'Facture fournisseur']), journal: 'ACH-KAI', when: '10 Aug 16:22', status: this.chip(L(['Draft in Odoo', 'Brouillon dans Odoo']), 'odoo') },
+        { ref: 'account.move,88712', type: L(['Depreciation journal', 'Écriture d’amortissement']), journal: 'OD-KLO', when: '10 Aug 05:31', status: this.chip(L(['Draft in Odoo', 'Brouillon dans Odoo']), 'odoo') },
+        { ref: 'account.batch.payment,3391', type: L(['Payment batch', 'Lot de paiement']), journal: 'BNK-SGC', when: '09 Aug 11:07', status: this.chip(L(['Awaiting manual posting', 'Validation manuelle attendue']), 'warn') },
+        { ref: 'account.move,88604', type: L(['Bank statement', 'Relevé bancaire']), journal: 'BNK-SGC', when: '08 Aug 18:44', status: this.chip(L(['Failed — access rights', 'Échec — droits d’accès']), 'risk') }
+      ],
+
+      calMonth: this.fmtDate(cam.date, { month: 'long', year: 'numeric' }),
+      calDayNames: (fr ? ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map(d => ({ d: d })),
+      calCells: (() => {
+        const y = cam.date.getFullYear(), m = cam.date.getMonth();
+        const first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7;
+        const dim = new Date(y, m + 1, 0).getDate();
+        const days = String(s.policy.days).split(',').map(x => parseInt(x.trim(), 10)).filter(n => n >= 1 && n <= 31);
+        const out = [];
+        for (let i = 0; i < lead; i++) out.push({ n: '', style: 'min-height:66px', tag: '', tagStyle: 'display:none' });
+        for (let d = 1; d <= dim; d++) {
+          const dt = new Date(y, m, d), we = dt.getDay() === 0 || dt.getDay() === 6;
+          const isCam = dt.getTime() === cam.date.getTime();
+          const isRaw = days.indexOf(d) >= 0 && !isCam;
+          const inH = dt > cam.date && dt <= cam.end;
+          const isToday = dt.getTime() === this.NOW.getTime();
+          out.push({
+            n: String(d),
+            style: 'min-height:66px;border-radius:11px;padding:7px 8px;display:flex;flex-direction:column;gap:4px;font-size:12px;border:1px solid '
+              + (isCam ? 'rgba(15,155,142,.45)' : inH ? 'rgba(29,95,181,.28)' : 'rgba(11,21,36,.08)') + ';'
+              + (isCam ? 'background:rgba(15,155,142,.14);font-weight:600;color:#0a5f57'
+                : inH ? 'background:rgba(29,95,181,.08);color:#17538f'
+                  : we ? 'background:rgba(11,21,36,.045);color:#5b6b80' : 'background:rgba(255,255,255,.55);color:#40506a')
+              + (isToday ? ';box-shadow:0 0 0 2px rgba(11,21,36,.45) inset' : ''),
+            tag: isCam ? L(['Campaign · ' + M(totalSel, 'XAF'), 'Campagne · ' + M(totalSel, 'XAF')]) : isRaw ? L(['Campaign day', 'Jour de campagne']) : inH ? L(['Horizon', 'Horizon']) : isToday ? L(['Today', 'Aujourd’hui']) : '',
+            tagStyle: (isCam || isRaw || inH || isToday) ? 'font-size:10.5px;line-height:1.35;opacity:.95' : 'display:none'
+          });
+        }
+        return out;
+      })(),
+      campaignRows: [
+        { id: 'CMP-2026-08-13-KAI', date: '13/08/2026', entity: 'Kribi Agro-Industries', inv: this.state.selected === null ? String(selRows.length) : String(selRows.length), sup: String(Object.keys(suppliers).length), total: M(totalSel, 'XAF'), overdue: M(totalOverdue, 'XAF'), bank: 'BNK-SGC', status: this.chip(L(this.STATUSES[s.status - 1]), s.status >= 8 ? 'odoo' : 'info'), owner: s.status >= 7 ? 'A. Mballa' : s.status >= 4 ? 'M. Ateba' : 'K. Njoya', open: this.go('campaign') },
+        { id: 'CMP-2026-07-25-KAI', date: '25/07/2026', entity: 'Kribi Agro-Industries', inv: '14', sup: '9', total: M(96400000, 'XAF'), overdue: M(21300000, 'XAF'), bank: 'BNK-SGC', status: this.chip(L(['Reconciled', 'Rapprochée']), 'ok'), owner: 'M. Ateba', open: this.go('campaign') },
+        { id: 'CMP-2026-07-13-KLO', date: '13/07/2026', entity: 'Kribi Logistique SA', inv: '8', sup: '6', total: M(41250000, 'XAF'), overdue: M(0, 'XAF'), bank: 'BNK-AFB', status: this.chip(L(['Partially paid', 'Partiellement payée']), 'warn'), owner: 'M. Ateba', open: this.go('campaign') },
+        { id: 'CMP-2026-08-25-KEU', date: '25/08/2026', entity: 'Kribi Europe SAS', inv: '—', sup: '—', total: M(0, 'EUR'), overdue: M(0, 'EUR'), bank: 'BNK-EUR', status: this.chip(L(['Scheduled', 'Planifiée']), 'mute'), owner: L(['AP agent', 'Agent fournisseurs']), open: this.go('campaign') }
+      ],
+      exceptions: [
+        { title: L(['Beneficiary bank account changed 4 days ago', 'Compte bancaire bénéficiaire modifié il y a 4 jours']), detail: 'WFT-12044 · Wouri Fret & Transit SA · ' + M(15200000, 'XAF'), chip: this.chip(L(['Verify', 'À vérifier']), 'risk') },
+        { title: L(['Related-party payment in the campaign', 'Paiement à une partie liée dans la campagne']), detail: 'WFT-11902 · ' + M(7280000, 'XAF') + ' · ' + L(['director common to both entities', 'administrateur commun aux deux entités']), chip: this.chip(L(['Controller review', 'Revue contrôleur']), 'warn') },
+        { title: L(['Total exceeds the approval threshold', 'Le total dépasse le seuil d’approbation']), detail: M(totalSel, 'XAF') + ' > ' + M(threshold, 'XAF'), chip: this.chip(L(['Second approver', 'Second approbateur']), 'warn') },
+        { title: L(['Invoice held out of scope by tax review', 'Facture exclue par la revue fiscale']), detail: 'CFE-2026-084 · ' + M(5600000, 'XAF'), chip: this.chip(L(['Blocked', 'Bloquée']), 'risk') }
+      ],
+      apRows: inHorizon.map(r => row(r, 'rw')),
+      trRows: inHorizon.filter(r => sel[r.inv.id]).map(r => row(r, 'tr')),
+      poolCount: String(pool.length),
+      scopeCount: String(inHorizon.length),
+      selCount: String(selRows.length),
+      supCount: String(Object.keys(suppliers).length),
+      blockedCount: String(inHorizon.filter(r => r.blockers.length).length),
+      totalSel: M(totalSel, 'XAF'),
+      totalOverdue: M(totalOverdue, 'XAF'),
+      totalHorizon: M(totalHorizon, 'XAF'),
+      totalBlocked: M(totalBlocked, 'XAF'),
+      totalDeferred: M(totalDeferred, 'XAF'),
+      cashAvail: M(cash, 'XAF'),
+      cashAfter: M(cash - totalSel, 'XAF'),
+      thresholdTxt: M(threshold, 'XAF'),
+      overThreshold: totalSel > threshold,
+      eurNote: L(['EUR balances converted at the fixed XAF/EUR parity of 655.957 for campaign totals only.', 'Soldes en EUR convertis à la parité fixe XAF/EUR de 655,957 pour les totaux de campagne uniquement.']),
+
+      ruleSentence: L([
+        'Every approved supplier invoice already overdue, plus every invoice falling due on the campaign day and within the following ' + s.policy.horizon + ' days, is proposed for payment. Days of month: ' + s.policy.days + '.',
+        'Toute facture fournisseur approuvée déjà échue, ainsi que toute facture arrivant à échéance le jour de campagne et dans les ' + s.policy.horizon + ' jours suivants, est proposée au paiement. Jours du mois : ' + s.policy.days + '.'
+      ]),
+      bankJournals: [
+        { name: 'Société Générale Cameroun', code: 'BNK-SGC', iban: 'CM21 1000 3001 •••• 4417', balance: M(268400000, 'XAF'), status: this.chip(L(['23 unreconciled', '23 non rapprochées']), 'warn') },
+        { name: 'Afriland First Bank', code: 'BNK-AFB', iban: 'CM21 1000 5002 •••• 9930', balance: M(131700000, 'XAF'), status: this.chip(L(['Reconciled', 'Rapproché']), 'ok') },
+        { name: L(['Central petty cash', 'Caisse centrale']), code: 'CAI-KAI', iban: '—', balance: M(12400000, 'XAF'), status: this.chip(L(['Reconciled', 'Rapproché']), 'ok') }
+      ],
+      warnChip: this.chip(L(['Balance mismatch', 'Écart de solde']), 'warn'),
+      uploadDemo: () => this.setState({ toast: { title: L(['Statement queued', 'Relevé en file']), body: L(['Normalisation runs first, then matching. Nothing posts to Odoo without review.', 'La normalisation s’exécute d’abord, puis le rapprochement. Rien n’est validé dans Odoo sans revue.']) } }),
+      btnPrimary: btn('primary'), btnGhost: btn('ghost'), btnDanger: btn('danger'), btnDisabled: dis,
+      canAP: can('ap'), canTr: can('treasury'), canFC: can('controller'),
+      apSendStyle: can('ap') && selRows.length ? btn('primary') : dis,
+      trSubmitStyle: can('treasury') && s.status >= 4 ? btn('primary') : dis,
+      fcApproveStyle: can('controller') && s.status >= 7 ? btn('primary') : dis,
+      apSend: this.act(4, 'AP Accountant · ' + (s.role === 'ap' ? 'K. Njoya' : 'A. Mballa'), L(['Sent to Treasury', 'Transmise à la trésorerie']), L([selRows.length + ' invoices, ' + M(totalSel, 'XAF') + ' proposed for the campaign of ' + this.fmtDate(cam.date), selRows.length + ' factures, ' + M(totalSel, 'XAF') + ' proposées pour la campagne du ' + this.fmtDate(cam.date)]), { title: L(['Proposal sent to Treasury', 'Proposition transmise à la trésorerie']), body: L(['Structured handoff created. Treasury has been notified.', 'Transfert structuré créé. La trésorerie a été notifiée.']) }),
+      trReturn: this.act(3, 'Treasury · M. Ateba', L(['Returned to AP', 'Retournée aux fournisseurs']), L(['Beneficiary bank details require re-verification.', 'Les coordonnées bancaires du bénéficiaire doivent être revérifiées.']), { title: L(['Returned to AP', 'Retournée aux fournisseurs']), body: L(['The AP Accountant has been asked to re-verify beneficiary details.', 'Le comptable fournisseurs doit revérifier les coordonnées du bénéficiaire.']) }),
+      trSubmit: this.act(7, 'Treasury · M. Ateba', L(['Submitted for controller approval', 'Soumise à l’approbation du contrôleur']), L(['Paying journal BNK-SGC selected, cash cover confirmed.', 'Journal payeur BNK-SGC sélectionné, couverture de trésorerie confirmée.']), { title: L(['Sent for approval', 'Envoyée pour approbation']), body: L(['Awaiting Financial Controller decision.', 'En attente de la décision du contrôleur financier.']) }),
+      fcApprove: this.act(8, 'Financial Controller · A. Mballa', L(['Approved for ERP preparation', 'Approuvée pour préparation ERP']), L(['Approved above threshold with second approver recorded.', 'Approuvée au-dessus du seuil avec second approbateur enregistré.']), { title: L(['Campaign approved', 'Campagne approuvée']), body: L(['Payments can now be prepared in Odoo as drafts.', 'Les paiements peuvent être préparés dans Odoo en brouillon.']) }),
+      fcReject: this.act(14, 'Financial Controller · A. Mballa', L(['Rejected', 'Rejetée']), L(['Cash cover insufficient for the overdue block.', 'Couverture de trésorerie insuffisante pour le bloc échu.']), { title: L(['Campaign rejected', 'Campagne rejetée']), body: L(['Returned to Treasury with comments.', 'Retournée à la trésorerie avec commentaires.']) }),
+      erpPush: this.act(10, 'Financial Controller · A. Mballa', L(['ERP draft created', 'Brouillon ERP créé']), L(['account.batch.payment created in Odoo, unposted. Manual posting required.', 'account.batch.payment créé dans Odoo, non validé. Validation manuelle requise.']), { title: L(['Draft created in Odoo', 'Brouillon créé dans Odoo']), body: L(['Nothing is posted. A human must review and post in Odoo.', 'Rien n’est validé. Un humain doit vérifier et valider dans Odoo.']) }),
+      selectAll: () => { const m = {}; pool.forEach(r => { if (r.eligible) m[r.inv.id] = true; }); this.setState({ selected: m }); },
+      clearAll: () => this.setState({ selected: {} }),
+      resetCampaign: () => this.setState({ selected: null, deferred: {}, status: 2, audit: [], toast: { title: L(['Campaign reset', 'Campagne réinitialisée']), body: L(['Selection recomputed from policy v7.', 'Sélection recalculée selon la politique v7.']) } })
+    };
+  }
+
+  camIdDoc = 'CMP-2026-08-13-KAI';
+
+  renderVals() {
+    const s = this.state, fr = s.lang === 'fr';
+    const t = {}; Object.keys(this.D).forEach(k => { t[k] = this.tx(k); });
+    const dens = s.reduceT ? { work: 1, card: 1, nav: .99, blur: 0 }
+      : s.density === 'airy' ? { work: .46, card: .38, nav: .74, blur: 26 }
+      : s.density === 'solid' ? { work: .93, card: .90, nav: .96, blur: 7 }
+      : { work: .70, card: .60, nav: .87, blur: 18 };
+    const cam = this.nextCampaign();
+
+    const navDef = [
+      { label: ['Command', 'Pilotage'], items: [
+        { id: 'control', icon: '◈', label: ['Control Room', 'Salle de contrôle'], badge: '' },
+        { id: 'controller', icon: '◎', label: ['Financial Controller', 'Contrôleur financier'], badge: '4' },
+        { id: 'policies', icon: '⚙', label: ['Policies', 'Politiques'], badge: '' }
+      ] },
+      { label: ['Accounting agents', 'Agents comptables'], items: [
+        { id: 'agents', icon: '⬡', label: ['Agent overview', 'Vue des agents'], badge: '' },
+        { id: 'ap', icon: '◱', label: ['AP Accountant', 'Comptable fournisseurs'], badge: '12' },
+        { id: 'treasury', icon: '◲', label: ['Treasury Accountant', 'Comptable trésorerie'], badge: '3' },
+        { id: 'assets', icon: '◳', label: ['Fixed Assets Accountant', 'Comptable immobilisations'], badge: '' },
+        { id: 'gl', icon: '◰', label: ['General Ledger Accountant', 'Comptable général'], badge: '2' },
+        { id: 'tax', icon: '◴', label: ['Tax Accountant', 'Comptable fiscaliste'], badge: '1' }
+      ] },
+      { label: ['Operations', 'Opérations'], items: [
+        { id: 'campaigns', icon: '▤', label: ['Payment Campaigns', 'Campagnes de paiement'], badge: '2' },
+        { id: 'journals', icon: '▦', label: ['Journal Centre', 'Centre des journaux'], badge: '' },
+        { id: 'approvals', icon: '✓', label: ['Approvals', 'Approbations'], badge: '7' },
+        { id: 'documents', icon: '▣', label: ['Documents', 'Documents'], badge: '' }
+      ] },
+      { label: ['System', 'Système'], items: [
+        { id: 'erp', icon: '⚯', label: ['ERP Connections', 'Connexions ERP'], badge: '' },
+        { id: 'audit', icon: '≡', label: ['Audit Trail', 'Piste d’audit'], badge: '' },
+        { id: 'reports', icon: '▥', label: ['Reports', 'Rapports'], badge: '' },
+        { id: 'settings', icon: '⚙', label: ['Tenant Settings', 'Paramètres client'], badge: '' }
+      ] }
+    ];
+
+    const navGroups = navDef.map(g => ({
+      label: this.L(g.label),
+      items: g.items.map(it => {
+        const on = s.route === it.id;
+        return {
+          label: this.L(it.label), icon: it.icon, go: this.go(it.id),
+          current: on ? 'page' : undefined,
+          badge: it.badge,
+          badgeStyle: it.badge ? 'min-width:22px;padding:1px 6px;border-radius:7px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;background:rgba(45,212,191,.18);color:#7fe6d8;border:1px solid rgba(45,212,191,.28)' : 'display:none',
+          style: 'display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:13.5px;transition:background 160ms cubic-bezier(.22,1,.36,1),transform 120ms;text-align:left;'
+            + (on
+              ? 'background:rgba(255,255,255,.14);color:#ffffff;border:1px solid rgba(255,255,255,.20);box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 6px 18px rgba(4,10,20,.35)'
+              : 'background:transparent;color:rgba(214,228,242,.80);border:1px solid transparent')
+        };
+      })
+    }));
+
+    const pages = {
+      control: [['Control Room', 'Salle de contrôle'], ['Everything that needs a human decision today, ranked by risk and deadline.', 'Tout ce qui exige une décision humaine aujourd’hui, classé par risque et échéance.']],
+      controller: [['Financial Controller', 'Contrôleur financier'], ['Supervision of the five specialised agents, exceptions, thresholds and close.', 'Supervision des cinq agents spécialisés, exceptions, seuils et clôture.']],
+      policies: [['Finance policies', 'Politiques financières'], ['Campaign calendar, selection horizon, thresholds and segregation of duties. Every change is versioned.', 'Calendrier des campagnes, horizon de sélection, seuils et séparation des tâches. Chaque modification est versionnée.']],
+      agents: [['Agent overview', 'Vue des agents'], ['Status, queue and last handoff for each accounting agent.', 'Statut, file d’attente et dernier transfert de chaque agent comptable.']],
+      ap: [['AP Accountant', 'Comptable fournisseurs'], ['Invoice intake, matching, coding and payment readiness for the next campaign.', 'Réception des factures, rapprochement, imputation et préparation au paiement.']],
+      treasury: [['Treasury Accountant', 'Comptable trésorerie'], ['Cash position, bank journals, statement processing and payment review.', 'Position de trésorerie, journaux de banque, relevés et revue des paiements.']],
+      assets: [['Fixed Assets Accountant', 'Comptable immobilisations'], ['Capitalisation, depreciation schedules and disposals.', 'Immobilisation, plans d’amortissement et cessions.']],
+      gl: [['General Ledger Accountant', 'Comptable général'], ['Manual journals, accruals, intercompany and period close.', 'Écritures manuelles, provisions, intragroupe et clôture.']],
+      tax: [['Tax Accountant', 'Comptable fiscaliste'], ['VAT, withholding tax and filing calendar under Cameroon rules.', 'TVA, retenue à la source et calendrier déclaratif (Cameroun).']],
+      campaigns: [['Payment Campaigns', 'Campagnes de paiement'], ['Calendar, list and detail of supplier payment campaigns.', 'Calendrier, liste et détail des campagnes de paiement fournisseurs.']],
+      campaign: [['Campaign detail', 'Détail de campagne'], ['Workflow, selection, review and audit history.', 'Flux, sélection, revue et historique d’audit.']],
+      journals: [['Journal Centre', 'Centre des journaux'], ['Draft journals prepared by agents. Nothing posts without a human.', 'Écritures brouillon préparées par les agents. Aucune validation sans intervention humaine.']],
+      approvals: [['Approval Centre', 'Centre d’approbation'], ['Everything waiting on a human signature.', 'Tout ce qui attend une signature humaine.']],
+      documents: [['Documents', 'Documents'], ['Source documents linked to transactions and campaigns.', 'Pièces justificatives liées aux transactions et campagnes.']],
+      erp: [['ERP Connections', 'Connexions ERP'], ['Odoo, Sage, Dynamics 365, SAP and custom API connectors.', 'Odoo, Sage, Dynamics 365, SAP et connecteurs API personnalisés.']],
+      audit: [['Audit Trail', 'Piste d’audit'], ['Immutable record of every agent action, approval and ERP submission.', 'Enregistrement immuable de chaque action d’agent, approbation et soumission ERP.']],
+      reports: [['Reports', 'Rapports'], ['SYSCOHADA statements, management packs and reconciliations.', 'États SYSCOHADA, liasses de gestion et rapprochements.']],
+      notifications: [['Notifications', 'Notifications'], ['Approvals, handoffs, deadlines and ERP events.', 'Approbations, transferts, échéances et événements ERP.']],
+      settings: [['Tenant Settings', 'Paramètres client'], ['Users, roles, entities, currencies and accounting configuration.', 'Utilisateurs, rôles, entités, devises et configuration comptable.']]
+    };
+    const pg = pages[s.route] || pages.control;
+
+    const isR = (r) => s.route === r;
+    const w = s.w || 1440, narrow = w < 900;
+    const bottomIds = ['control', 'controller', 'ap', 'treasury', 'campaigns'];
+    const bottomIcons = { control: '◈', controller: '◎', ap: '◱', treasury: '◲', campaigns: '▤' };
+    const shortLbl = { control: ['Control', 'Contrôle'], controller: ['Controller', 'Contrôleur'], ap: ['AP', 'Fourn.'], treasury: ['Treasury', 'Trésor.'], campaigns: ['Campaigns', 'Campagnes'] };
+    return Object.assign({}, this.buildScreens(cam, fr), {
+      t,
+      narrow,
+      navOpen: s.navOpen && narrow,
+      closeNav: () => this.setState({ navOpen: false }),
+      bottomNav: narrow ? bottomIds.map(id => ({
+        icon: bottomIcons[id], label: this.L(shortLbl[id]), go: this.go(id),
+        current: s.route === id ? 'page' : undefined,
+        style: 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:1;min-width:0;min-height:52px;padding:6px 2px;border:none;background:transparent;cursor:pointer;font-size:10.5px;'
+          + (s.route === id ? 'color:#8ff0e3;font-weight:600' : 'color:rgba(214,228,242,.72)')
+      })) : [],
+      isControl: isR('control'), isController: isR('controller'), isPolicies: isR('policies'),
+      isAP: isR('ap'), isTreasury: isR('treasury'), isCampaigns: isR('campaigns'), isCampaign: isR('campaign'),
+      isErp: isR('erp'), isGeneric: ['agents', 'assets', 'gl', 'tax', 'journals', 'approvals', 'documents', 'audit', 'reports', 'notifications', 'settings'].indexOf(s.route) >= 0,
+      generic: this.genericPage(fr),
+      policy: s.policy,
+      onDays: (e) => this.setState({ policy: Object.assign({}, s.policy, { days: e.target.value }), selected: null }),
+      onHorizon: (e) => this.setState({ policy: Object.assign({}, s.policy, { horizon: Math.max(0, Math.min(31, Number(e.target.value) || 0)) }), selected: null }),
+      onWeekend: (e) => this.setState({ policy: Object.assign({}, s.policy, { weekendRule: e.target.value }), selected: null }),
+      weekendRule: s.policy.weekendRule,
+      weekendOpts: [
+        { id: 'prev', name: fr ? 'Jour ouvré précédent' : 'Previous business day' },
+        { id: 'next', name: fr ? 'Jour ouvré suivant' : 'Next business day' },
+        { id: 'exec', name: fr ? 'Conserver la date, décaler l’exécution' : 'Keep date, shift execution' }
+      ],
+      erpMode: s.erpMode,
+      erpModeSim: s.erpMode === 'sim',
+      erpModeLive: s.erpMode === 'live',
+      pickSim: () => this.setState({ erpMode: 'sim', erpTest: null }),
+      pickLive: () => this.setState({ erpMode: 'live', erpTest: null }),
+      erpTest: s.erpTest,
+      simStyle: 'flex:1;min-width:220px;text-align:left;padding:13px 15px;border-radius:13px;cursor:pointer;transition:transform 140ms cubic-bezier(.22,1,.36,1);'
+        + (s.erpMode === 'sim' ? 'background:rgba(123,108,217,.16);border:1.5px solid rgba(123,108,217,.45);color:#4a3d99' : 'background:rgba(255,255,255,.66);border:1.5px solid rgba(11,21,36,.12);color:#40506a'),
+      liveStyle: 'flex:1;min-width:220px;text-align:left;padding:13px 15px;border-radius:13px;cursor:pointer;transition:transform 140ms cubic-bezier(.22,1,.36,1);'
+        + (s.erpMode === 'live' ? 'background:rgba(123,108,217,.16);border:1.5px solid rgba(123,108,217,.45);color:#4a3d99' : 'background:rgba(255,255,255,.66);border:1.5px solid rgba(11,21,36,.12);color:#40506a'),
+      simHint: fr ? 'Données de démonstration, aucun identifiant.' : 'Demonstration data, no credentials.',
+      liveHint: fr ? 'XML-RPC vers votre instance Odoo.' : 'XML-RPC against your Odoo instance.',
+      simExplain: fr
+        ? 'Le simulateur ne demande aucun identifiant : il n’y a rien à saisir, c’est pourquoi aucun champ n’est affiché. Les écritures créées portent la mention « simulé » et ne peuvent pas être transmises à une base réelle. Pour connecter une base Odoo, choisissez « Connexion Odoo réelle » ci-dessus ; vos identifiants seront chiffrés et jamais réaffichés dans le navigateur.'
+        : 'The simulator needs no credentials — there is nothing to enter, which is why no fields are shown. Records created here are marked “simulated” and cannot be pushed to a real database. To connect a real database, choose “Connect live Odoo” above; credentials are encrypted at rest and never shown in the browser again.',
+      erpFields: [
+        { label: fr ? 'Nom de la connexion' : 'Connection name', type: 'text', value: 'Kribi Agro — production', ph: '', hint: fr ? 'Libellé interne, visible dans la piste d’audit.' : 'Internal label, shown in the audit trail.' },
+        { label: fr ? 'URL du serveur' : 'Server URL', type: 'url', value: 'https://kribi.odoo.com', ph: 'https://', hint: fr ? 'L’adresse à laquelle vous vous connectez à Odoo, sans /web.' : 'The address you sign in to Odoo with, without /web.' },
+        { label: fr ? 'Base de données' : 'Database', type: 'text', value: 'kribi-prod-17', ph: '', hint: fr ? 'Odoo → Paramètres → Développeur → « Base de données ».' : 'Odoo → Settings → Developer → “Database”.' },
+        { label: fr ? 'Identifiant' : 'Login', type: 'email', value: 'integration@kribi.cm', ph: '', hint: fr ? 'Utilisateur technique dédié, droits de lecture et de brouillon uniquement.' : 'Dedicated technical user, read and draft rights only — no posting right.' },
+        { label: fr ? 'Clé API' : 'API key', type: 'password', value: '', ph: '••••••••••••', hint: fr ? 'Odoo → Préférences → Sécurité du compte → Clés API. Saisie une seule fois, jamais réaffichée.' : 'Odoo → Preferences → Account security → API keys. Entered once, never displayed again.' },
+        { label: fr ? 'Société / entité' : 'Company / legal entity', type: 'text', value: 'Kribi Agro-Industries SARL', ph: '', hint: fr ? 'Doit correspondre à res.company dans Odoo.' : 'Must match res.company in Odoo.' }
+      ],
+      runTest: () => this.setState({ erpTest: s.erpMode === 'sim' ? { tone: 'info', title: fr ? 'Simulateur actif' : 'Simulator active', body: fr ? 'Aucun identifiant requis. Les enregistrements créés seront marqués « simulé ».' : 'No credentials required. Records created here are marked “simulated”.' } : { tone: 'ok', title: fr ? 'Connexion réussie' : 'Connection successful', body: fr ? 'Odoo 17.0 · base kribi-prod-17 · 4 droits vérifiés : lecture journaux, écriture brouillons, lecture partenaires, lecture relevés. Aucun droit de validation demandé.' : 'Odoo 17.0 · database kribi-prod-17 · 4 rights verified: read journals, write drafts, read partners, read statements. No posting right requested.' } }),
+      rootStyle: 'min-height:100vh;display:flex;flex-direction:column;font-family:"IBM Plex Sans",system-ui,sans-serif;color:#0b1524;'
+        + 'background:radial-gradient(1100px 620px at 12% -8%,rgba(45,212,191,.16),transparent 60%),radial-gradient(900px 560px at 92% 4%,rgba(123,108,217,.14),transparent 62%),linear-gradient(180deg,#eef2f7 0%,#e7ecf3 100%);'
+        + '--nav:rgba(11,21,36,' + dens.nav + ');--work:rgba(255,255,255,' + dens.work + ');--card:rgba(255,255,255,' + dens.card + ');--blur:' + dens.blur + 'px;--burger:' + (narrow ? 'inline-flex' : 'none') + ';',
+      mainStyle: 'flex:1;min-width:0;padding:' + (narrow ? '16px 14px 96px' : '20px 20px 80px'),
+      sidebarStyle: narrow
+        ? 'position:fixed;inset:0 auto 0 0;z-index:50;width:min(300px,86vw);overflow:auto;display:' + (s.navOpen ? 'flex' : 'none') + ';flex-direction:column;'
+          + 'background:rgba(11,21,36,.96);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);border-right:1px solid rgba(255,255,255,.12);box-shadow:0 20px 60px rgba(4,10,20,.5)'
+        : 'position:sticky;top:112px;align-self:flex-start;width:250px;flex:none;height:calc(100vh - 112px);overflow:auto;display:flex;flex-direction:column;'
+          + 'background:var(--nav,rgba(11,21,36,.87));backdrop-filter:blur(var(--blur,18px)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur,18px)) saturate(160%);border-right:1px solid rgba(255,255,255,.10)',
+      navGroups,
+      tenants: [{ id: 'GKH', name: 'Groupe Kribi Holdings SA' }, { id: 'SAF', name: 'Sahel Agro-Finance SA' }],
+      entities: [{ id: 'KAI', name: 'Kribi Agro-Industries SARL (XAF)' }, { id: 'KLO', name: 'Kribi Logistique SA (XAF)' }, { id: 'KEU', name: 'Kribi Europe SAS (EUR)' }],
+      roles: [
+        { id: 'admin', name: fr ? 'Administrateur — tous rôles' : 'Admin — all roles' },
+        { id: 'controller', name: fr ? 'Contrôleur financier' : 'Financial Controller' },
+        { id: 'ap', name: fr ? 'Comptable fournisseurs' : 'AP Accountant' },
+        { id: 'treasury', name: fr ? 'Comptable trésorerie' : 'Treasury Accountant' }
+      ],
+      tenant: s.tenant, entity: s.entity, role: s.role,
+      onTenant: (e) => this.setState({ tenant: e.target.value }),
+      onEntity: (e) => this.setState({ entity: e.target.value }),
+      onRole: (e) => this.setState({ role: e.target.value }),
+      langs: ['en', 'fr'].map(l => ({
+        label: l.toUpperCase(), on: s.lang === l ? 'true' : 'false',
+        pick: () => this.setState({ lang: l }),
+        style: 'min-width:44px;min-height:34px;padding:6px 10px;border:none;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:.04em;'
+          + (s.lang === l ? 'background:rgba(255,255,255,.90);color:#0b1524' : 'background:transparent;color:rgba(214,228,242,.78)')
+      })),
+      toggleNav: () => this.setState({ navOpen: !s.navOpen }),
+      openSettingsDrawer: () => this.setState({ displayOpen: true }),
+      displayOpen: !!s.displayOpen,
+      closeDisplay: () => this.setState({ displayOpen: false }),
+      densityOpts: [
+        { id: 'airy', name: fr ? 'Aérée' : 'Airy', hint: fr ? 'Verre très translucide, flou large.' : 'Highly translucent glass, wide blur.' },
+        { id: 'balanced', name: fr ? 'Équilibrée' : 'Balanced', hint: fr ? 'Réglage par défaut pour le travail comptable.' : 'Default setting for accounting work.' },
+        { id: 'solid', name: fr ? 'Dense' : 'Solid', hint: fr ? 'Surfaces quasi opaques, contraste maximal.' : 'Near-opaque surfaces, maximum contrast.' }
+      ].map(o => ({
+        name: o.name, hint: o.hint, checked: s.density === o.id ? 'true' : 'false',
+        pick: () => this.setState({ density: o.id, reduceT: false }),
+        style: 'display:block;width:100%;text-align:left;padding:11px 13px;border-radius:11px;cursor:pointer;transition:background 150ms;'
+          + (s.density === o.id && !s.reduceT ? 'background:rgba(15,155,142,.14);border:1.5px solid rgba(15,155,142,.42);color:#0a5f57' : 'background:rgba(255,255,255,.6);border:1.5px solid rgba(11,21,36,.12);color:#40506a')
+      })),
+      reduceTOn: !!s.reduceT,
+      toggleReduceT: () => this.setState({ reduceT: !s.reduceT }),
+      reduceTStyle: 'display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:11px 13px;border-radius:11px;cursor:pointer;text-align:left;'
+        + (s.reduceT ? 'background:rgba(15,155,142,.14);border:1.5px solid rgba(15,155,142,.42);color:#0a5f57' : 'background:rgba(255,255,255,.6);border:1.5px solid rgba(11,21,36,.12);color:#40506a'),
+      reduceTSwitch: 'width:40px;height:23px;border-radius:12px;flex:none;position:relative;transition:background 160ms;background:' + (s.reduceT ? '#0c7c71' : 'rgba(11,21,36,.22)'),
+      reduceTKnob: 'position:absolute;top:3px;left:' + (s.reduceT ? '20px' : '3px') + ';width:17px;height:17px;border-radius:9px;background:#fff;transition:left 160ms cubic-bezier(.22,1,.36,1);box-shadow:0 1px 3px rgba(0,0,0,.3)',
+      goNotifications: this.go('notifications'),
+      goCampaign: this.go('campaign'),
+      notifCount: 7,
+      erpDb: 'kribi-prod-17',
+      lastSync: fr ? 'il y a 6 min' : '6 min ago',
+      periodLabel: this.fmtDate(new Date(2026, 6, 1), { month: 'long', year: 'numeric' }),
+      todayLabel: this.fmtDate(this.NOW),
+      campaignDateLabel: this.fmtDate(cam.date, { weekday: 'short', day: '2-digit', month: 'short' }),
+      horizonEndLabel: this.fmtDate(cam.end, { day: '2-digit', month: 'short' }),
+      crumb: (fr ? 'Groupe Kribi Holdings' : 'Groupe Kribi Holdings') + ' / ' + (s.entity === 'KAI' ? 'Kribi Agro-Industries SARL' : s.entity === 'KLO' ? 'Kribi Logistique SA' : 'Kribi Europe SAS'),
+      pageTitle: this.L(pg[0]),
+      pageSub: this.L(pg[1]),
+      toast: s.toast ? { title: s.toast.title, body: s.toast.body, dot: 'width:9px;height:9px;border-radius:5px;background:#0f9b8e;margin-top:5px;flex:none' } : null,
+      closeToast: () => this.setState({ toast: null })
+    });
+  }
+
+  genericPage(fr) {
+    const L = (o) => this.L(o), M = (n, c) => this.money(n, c), C = (txt, tone) => this.chip(this.L(txt), tone);
+    const G = {
+      agents: {
+        tiles: [[['Agents online', 'Agents actifs'], '6', ['1 blocked', '1 bloqué']], [['Open exceptions', 'Exceptions ouvertes'], '12', ['3 escalated', '3 escaladées']], [['Handoffs today', 'Transferts du jour'], '9', ['1 failed', '1 en échec']], [['Draft journals', 'Écritures brouillon'], '14', ['0 posted', '0 validée']]],
+        cols: [[['Agent', 'Agent'], 'l'], [['Status', 'Statut'], 'l'], [['Queue', 'File'], 'r'], [['Exceptions', 'Exceptions'], 'r'], [['Last action', 'Dernière action'], 'l']],
+        rows: [
+          ['Financial Controller', C(['Supervising', 'En supervision'], 'teal'), '4', '3', L(['Escalated dispute NMI-2026-77', 'Litige NMI-2026-77 escaladé'])],
+          ['AP Accountant', C(['Working', 'En cours'], 'info'), '12', '5', L(['Payment proposal prepared', 'Proposition de paiement préparée'])],
+          ['Treasury Accountant', C(['Awaiting input', 'En attente'], 'warn'), '3', '1', L(['Clarification requested from AP', 'Clarification demandée aux fournisseurs'])],
+          ['Fixed Assets Accountant', C(['Idle', 'Inactif'], 'mute'), '0', '0', L(['July depreciation drafted', 'Amortissement de juillet préparé'])],
+          ['General Ledger Accountant', C(['Working', 'En cours'], 'info'), '2', '2', L(['Suspense 471000 cleared', 'Compte 471000 apuré'])],
+          ['Tax Accountant', C(['Blocked', 'Bloqué'], 'risk'), '1', '1', L(['Awaiting tax clearance', 'Attestation fiscale attendue'])]
+        ],
+        notes: [[['Agents never post', 'Les agents ne valident jamais'], ['Every agent output is a proposal. Posting in the ERP is a human action, always.', 'Chaque production d’agent est une proposition. La validation dans l’ERP est toujours une action humaine.']]]
+      },
+      assets: {
+        tiles: [[['Gross book value', 'Valeur brute'], M(2841000000, 'XAF'), ['SYSCOHADA class 2', 'Classe 2 SYSCOHADA']], [['July depreciation', 'Amortissement juillet'], M(23640000, 'XAF'), ['draft journal', 'écriture brouillon']], [['Capitalisation review', 'Revue d’immobilisation'], '3', ['above XAF 500 000', 'au-dessus de 500 000 XAF']], [['Disposals YTD', 'Cessions cumulées'], '2', ['gain ' + M(1250000, 'XAF'), 'plus-value ' + M(1250000, 'XAF')]]],
+        cols: [[['Asset', 'Immobilisation'], 'l'], [['Category', 'Catégorie'], 'l'], [['Useful life', 'Durée'], 'r'], [['Method', 'Méthode'], 'l'], [['NBV', 'VNC'], 'r'], [['Status', 'Statut'], 'l']],
+        rows: [
+          ['Ligne de conditionnement L4', L(['Plant & machinery', 'Installations techniques']), '10 ' + L(['yrs', 'ans']), L(['Straight line', 'Linéaire']), M(184300000, 'XAF'), C(['Depreciating', 'En amortissement'], 'ok')],
+          ['Entrepôt Bonabéri — toiture', L(['Buildings — component', 'Constructions — composant']), '15 ' + L(['yrs', 'ans']), L(['Straight line', 'Linéaire']), M(96500000, 'XAF'), C(['Component split', 'Décomposition'], 'info')],
+          ['Flotte 4 × camions Hino', L(['Vehicles', 'Matériel de transport']), '5 ' + L(['yrs', 'ans']), L(['Reducing balance', 'Dégressif']), M(72800000, 'XAF'), C(['Depreciating', 'En amortissement'], 'ok')],
+          ['Groupe électrogène 400 kVA', L(['Plant & machinery', 'Installations techniques']), '8 ' + L(['yrs', 'ans']), L(['Straight line', 'Linéaire']), M(31900000, 'XAF'), C(['Capitalisation review', 'Revue d’immobilisation'], 'warn')],
+          ['Licence ERP Odoo (3 ans)', L(['Intangible', 'Immobilisation incorporelle']), '3 ' + L(['yrs', 'ans']), L(['Straight line', 'Linéaire']), M(8400000, 'XAF'), C(['Expense proposed', 'Charge proposée'], 'warn')]
+        ],
+        notes: [[['Handoff to General Ledger', 'Transfert vers la comptabilité générale'], ['FA-DEP-2026-07 proposes ' + M(23640000, 'XAF') + ' of depreciation across 34 assets. Confidence 0.97. Awaiting GL review.', 'FA-DEP-2026-07 propose ' + M(23640000, 'XAF') + ' d’amortissement sur 34 immobilisations. Confiance 0,97. En attente de la revue générale.']]]
+      },
+      gl: {
+        tiles: [[['Trial balance difference', 'Écart de balance'], M(0, 'XAF'), ['balanced', 'équilibrée']], [['Draft journals', 'Écritures brouillon'], '14', ['7 from agents', '7 issues des agents']], [['Suspense 471000', 'Compte d’attente 471000'], M(1840000, 'XAF'), ['4 items', '4 éléments']], [['Close progress', 'Avancement clôture'], '68%', ['3 controls open', '3 contrôles ouverts']]],
+        cols: [[['Journal', 'Journal'], 'l'], [['Reference', 'Référence'], 'l'], [['Type', 'Type'], 'l'], [['Debit', 'Débit'], 'r'], [['Credit', 'Crédit'], 'r'], [['Status', 'Statut'], 'l']],
+        rows: [
+          ['OD-KAI', 'ACC-2026-07-014', L(['Accrual', 'Charge à payer']), M(12400000, 'XAF'), M(12400000, 'XAF'), C(['Draft in Odoo', 'Brouillon dans Odoo'], 'odoo')],
+          ['OD-KAI', 'PRE-2026-07-003', L(['Prepayment', 'Charge constatée d’avance']), M(3600000, 'XAF'), M(3600000, 'XAF'), C(['Draft in Odoo', 'Brouillon dans Odoo'], 'odoo')],
+          ['OD-KLO', 'FA-DEP-2026-07', L(['Depreciation', 'Amortissement']), M(23640000, 'XAF'), M(23640000, 'XAF'), C(['Awaiting review', 'En attente de revue'], 'warn')],
+          ['IC-GRP', 'IC-2026-07-006', L(['Intercompany', 'Intragroupe']), M(48200000, 'XAF'), M(48200000, 'XAF'), C(['Counterparty match', 'Contrepartie rapprochée'], 'ok')],
+          ['OD-KAI', 'SUS-2026-07-011', L(['Suspense clearing', 'Apurement compte d’attente']), M(1840000, 'XAF'), M(1840000, 'XAF'), C(['Needs evidence', 'Justificatif requis'], 'risk')]
+        ],
+        notes: [[['Nothing posts automatically', 'Aucune validation automatique'], ['All 14 drafts sit unposted in Odoo. The GL Accountant reviews, then a human with posting rights validates.', 'Les 14 brouillons restent non validés dans Odoo. Le comptable général vérifie, puis un humain habilité valide.']]]
+      },
+      tax: {
+        tiles: [[['VAT payable July', 'TVA à payer juillet'], M(41300000, 'XAF'), ['due 15 Aug', 'échéance 15 août']], [['Withholding tax', 'Retenue à la source'], M(7920000, 'XAF'), ['5.5% standard', '5,5 % standard']], [['Open tax exceptions', 'Exceptions fiscales'], '1', ['blocking 1 payment', 'bloque 1 paiement']], [['Filings this month', 'Déclarations du mois'], '3', ['0 late', '0 en retard']]],
+        cols: [[['Obligation', 'Obligation'], 'l'], [['Period', 'Période'], 'l'], [['Basis', 'Base'], 'r'], [['Amount', 'Montant'], 'r'], [['Due date', 'Échéance'], 'l'], [['Status', 'Statut'], 'l']],
+        rows: [
+          [L(['VAT return (TVA)', 'Déclaration TVA']), '07/2026', M(236000000, 'XAF'), M(41300000, 'XAF'), '15/08/2026', C(['Draft prepared', 'Brouillon préparé'], 'info')],
+          [L(['Withholding tax on services', 'Retenue à la source services']), '07/2026', M(144000000, 'XAF'), M(7920000, 'XAF'), '15/08/2026', C(['Draft prepared', 'Brouillon préparé'], 'info')],
+          [L(['Corporate tax instalment', 'Acompte impôt société']), 'Q2 2026', M(0, 'XAF'), M(18500000, 'XAF'), '15/09/2026', C(['Scheduled', 'Planifié'], 'mute')],
+          [L(['Special income tax (TSR)', 'Taxe spéciale sur le revenu (TSR)']), '07/2026', M(21400000, 'XAF'), M(3210000, 'XAF'), '15/08/2026', C(['Exception open', 'Exception ouverte'], 'risk')]
+        ],
+        notes: [[['CFE-2026-084 — withholding review', 'CFE-2026-084 — revue de retenue'], ['Professional services from a resident supplier. Proposed treatment: 5.5% WHT plus 19.25% VAT, deductible. Confidence 0.61 — evidence incomplete, so the invoice stays out of the campaign.', 'Prestations de services d’un fournisseur résident. Traitement proposé : RAS 5,5 % et TVA 19,25 %, déductible. Confiance 0,61 — justificatifs incomplets, la facture reste hors campagne.']]]
+      },
+      journals: {
+        tiles: [[['Draft in ERP', 'Brouillon dans l’ERP'], '14', ['none posted', 'aucune validée']], [['Prepared by agents', 'Préparées par les agents'], '7', ['4 need review', '4 à vérifier']], [['Rejected', 'Rejetées'], '1', ['returned to AP', 'retournée aux fournisseurs']], [['Posted this period', 'Validées sur la période'], '212', ['by 3 humans', 'par 3 humains']]],
+        cols: [[['Reference', 'Référence'], 'l'], [['Journal', 'Journal'], 'l'], [['Prepared by', 'Préparée par'], 'l'], [['Amount', 'Montant'], 'r'], [['ERP status', 'Statut ERP'], 'l'], [['Next action', 'Action suivante'], 'l']],
+        rows: [
+          ['account.move,88651', 'ACH-KAI', 'AP Accountant', M(28400000, 'XAF'), C(['Draft', 'Brouillon'], 'odoo'), L(['Human posting', 'Validation humaine'])],
+          ['account.move,88712', 'OD-KLO', 'Fixed Assets', M(23640000, 'XAF'), C(['Draft', 'Brouillon'], 'odoo'), L(['GL review', 'Revue comptabilité générale'])],
+          ['account.move,88633', 'ACH-KAI', 'AP Accountant', M(5600000, 'XAF'), C(['Blocked', 'Bloquée'], 'risk'), L(['Tax review', 'Revue fiscale'])],
+          ['account.move,88604', 'BNK-SGC', 'Treasury', M(0, 'XAF'), C(['Failed — access rights', 'Échec — droits d’accès'], 'risk'), L(['Fix connection scope', 'Corriger le périmètre'])],
+          ['account.move,88588', 'ACH-KAI', 'AP Accountant', M(9870000, 'XAF'), C(['Draft', 'Brouillon'], 'odoo'), L(['Human posting', 'Validation humaine'])]
+        ],
+        notes: [[['Idempotent submission', 'Soumission idempotente'], ['Each submission carries a campaign-scoped idempotency key, so a retry after a network failure cannot create a second draft.', 'Chaque soumission porte une clé d’idempotence propre à la campagne : une nouvelle tentative après incident réseau ne peut pas créer un second brouillon.']]]
+      },
+      approvals: {
+        tiles: [[['Awaiting you', 'En attente de vous'], '3', ['1 above threshold', '1 au-dessus du seuil']], [['Awaiting others', 'En attente d’autres'], '4', ['2 overdue', '2 en retard']], [['Approved today', 'Approuvées aujourd’hui'], '5', ['0 auto-approved', '0 auto-approuvée']], [['SoD conflicts', 'Conflits de séparation'], '1', ['blocked', 'bloqué']]],
+        cols: [[['Item', 'Élément'], 'l'], [['Type', 'Type'], 'l'], [['Amount', 'Montant'], 'r'], [['Requested by', 'Demandé par'], 'l'], [['Approver', 'Approbateur'], 'l'], [['Status', 'Statut'], 'l']],
+        rows: [
+          ['CMP-2026-08-13-KAI', L(['Payment campaign', 'Campagne de paiement']), M(118000000, 'XAF'), 'Treasury · M. Ateba', 'A. Mballa', C(['Awaiting approval', 'En attente d’approbation'], 'warn')],
+          ['NBF-0844', L(['Supplier invoice', 'Facture fournisseur']), M(2960000, 'XAF'), 'AP · K. Njoya', 'A. Mballa', C(['Awaiting approval', 'En attente d’approbation'], 'warn')],
+          ['Policy v8 draft', L(['Policy change', 'Modification de politique']), '—', 'Controller · A. Mballa', L(['CFO', 'Directeur financier']), C(['SoD conflict', 'Conflit de séparation'], 'risk')],
+          ['FA-DEP-2026-07', L(['Journal', 'Écriture']), M(23640000, 'XAF'), 'Fixed Assets · agent', 'C. Fokou', C(['Awaiting review', 'En attente de revue'], 'info')]
+        ],
+        notes: [[['Segregation of duties', 'Séparation des tâches'], ['A. Mballa proposed policy v8 and cannot approve it. The request has been routed to the CFO.', 'A. Mballa a proposé la politique v8 et ne peut pas l’approuver. La demande est routée vers le directeur financier.']]]
+      },
+      documents: {
+        tiles: [[['Documents this period', 'Documents de la période'], '486', ['92% auto-matched', '92 % rapprochés']], [['Unmatched', 'Non rapprochés'], '11', ['needs a human', 'intervention requise']], [['Bank statements', 'Relevés bancaires'], '3', ['1 unvalidated', '1 non validé']], [['Storage', 'Stockage'], '2.4 GB', ['encrypted at rest', 'chiffré au repos']]],
+        cols: [[['Document', 'Document'], 'l'], [['Type', 'Type'], 'l'], [['Linked to', 'Rattaché à'], 'l'], [['Source', 'Source'], 'l'], [['Received', 'Reçu'], 'l'], [['Status', 'Statut'], 'l']],
+        rows: [
+          ['EL-2026-07-260.pdf', L(['Supplier invoice', 'Facture fournisseur']), 'account.move,88651', L(['Supplier e-mail', 'Courriel fournisseur']), '15/07/2026', C(['Matched', 'Rapproché'], 'ok')],
+          ['SGC-2026-07.csv', L(['Bank statement', 'Relevé bancaire']), 'BNK-SGC', L(['Manual upload', 'Dépôt manuel']), '01/08/2026', C(['Balance unvalidated', 'Solde non validé'], 'warn')],
+          ['NBF-0731.pdf', L(['Supplier invoice', 'Facture fournisseur']), 'account.move,88402', L(['Scan', 'Numérisation']), '22/06/2026', C(['Missing bank details', 'Coordonnées manquantes'], 'risk')],
+          ['CFE-2026-084.pdf', L(['Service contract', 'Contrat de prestation']), 'account.move,88633', L(['Supplier portal', 'Portail fournisseur']), '14/07/2026', C(['Tax review', 'Revue fiscale'], 'warn')]
+        ],
+        notes: [[['Extraction confidence', 'Confiance d’extraction'], ['Fields below 0.80 confidence are highlighted for human confirmation before they reach a journal.', 'Les champs dont la confiance est inférieure à 0,80 sont signalés pour confirmation humaine avant toute écriture.']]]
+      },
+      audit: {
+        tiles: [[['Events this period', 'Événements de la période'], '3 418', ['immutable', 'immuable']], [['Agent actions', 'Actions d’agents'], '2 106', ['0 postings', '0 validation']], [['Human approvals', 'Approbations humaines'], '184', ['all attributed', 'toutes attribuées']], [['Policy changes', 'Modifications de politique'], '7', ['versioned', 'versionnées']]],
+        cols: [[['Timestamp', 'Horodatage'], 'l'], [['Actor', 'Acteur'], 'l'], [['Event', 'Événement'], 'l'], [['Object', 'Objet'], 'l'], [['Result', 'Résultat'], 'l']],
+        rows: [
+          ['11/08/2026 08:12', 'Treasury · agent', L(['Handoff returned', 'Transfert retourné']), 'WFT-12044', C(['Recorded', 'Enregistré'], 'ok')],
+          ['11/08/2026 07:41', 'Tax · agent', L(['Review requested', 'Revue demandée']), 'CFE-2026-084', C(['Open', 'Ouvert'], 'warn')],
+          ['11/08/2026 06:04', 'AP · agent', L(['Proposal generated', 'Proposition générée']), 'CMP-2026-08-13-KAI', C(['Recorded', 'Enregistré'], 'ok')],
+          ['10/08/2026 16:22', 'AP · K. Njoya', L(['ERP submission', 'Soumission ERP']), 'account.move,88651', C(['Draft created', 'Brouillon créé'], 'odoo')],
+          ['09/08/2026 14:03', 'Controller · A. Mballa', L(['Policy updated', 'Politique mise à jour']), L(['Policy v7', 'Politique v7']), C(['Versioned', 'Versionnée'], 'info')]
+        ],
+        notes: [[['Immutable by design', 'Immuable par conception'], ['Entries are append-only and hash-chained. Exports carry the chain head so an auditor can verify no event was removed.', 'Les entrées sont en ajout seul et chaînées par empreinte. Les exports incluent la tête de chaîne pour qu’un auditeur vérifie qu’aucun événement n’a été supprimé.']]]
+      },
+      reports: {
+        tiles: [[['Statements', 'États financiers'], '4', ['SYSCOHADA révisé', 'SYSCOHADA révisé']], [['Management pack', 'Liasse de gestion'], '1', ['July 2026', 'juillet 2026']], [['Reconciliations', 'Rapprochements'], '6', ['2 with differences', '2 avec écarts']], [['Scheduled exports', 'Exports planifiés'], '3', ['XLSX & PDF', 'XLSX et PDF']]],
+        cols: [[['Report', 'Rapport'], 'l'], [['Basis', 'Référentiel'], 'l'], [['Period', 'Période'], 'l'], [['Owner', 'Responsable'], 'l'], [['Status', 'Statut'], 'l']],
+        rows: [
+          [L(['Balance sheet', 'Bilan']), 'SYSCOHADA', '07/2026', 'GL · agent', C(['Draft', 'Brouillon'], 'info')],
+          [L(['Income statement', 'Compte de résultat']), 'SYSCOHADA', '07/2026', 'GL · agent', C(['Draft', 'Brouillon'], 'info')],
+          [L(['Cash flow statement', 'Tableau des flux']), 'SYSCOHADA', '07/2026', 'Treasury · agent', C(['Blocked — unreconciled', 'Bloqué — non rapproché'], 'risk')],
+          [L(['Supplier ageing', 'Balance âgée fournisseurs']), L(['Internal', 'Interne']), '11/08/2026', 'AP · agent', C(['Ready', 'Prêt'], 'ok')],
+          [L(['Bank reconciliation summary', 'Synthèse de rapprochement bancaire']), L(['Internal', 'Interne']), '07/2026', 'Treasury · M. Ateba', C(['2 differences', '2 écarts'], 'warn')]
+        ],
+        notes: [[['Figures follow the ledger', 'Les chiffres suivent le grand livre'], ['Reports read posted entries only. Drafts prepared by agents are excluded and shown as a reconciling note.', 'Les rapports ne lisent que les écritures validées. Les brouillons préparés par les agents sont exclus et présentés en note de rapprochement.']]]
+      },
+      notifications: {
+        tiles: [[['Unread', 'Non lues'], '7', ['3 need action', '3 requièrent une action']], [['Approvals', 'Approbations'], '3', ['1 overdue', '1 en retard']], [['ERP events', 'Événements ERP'], '2', ['1 failure', '1 échec']], [['Deadlines', 'Échéances'], '2', ['VAT 15 Aug', 'TVA 15 août']]],
+        cols: [[['When', 'Quand'], 'l'], [['Source', 'Source'], 'l'], [['Message', 'Message'], 'l'], [['Priority', 'Priorité'], 'l']],
+        rows: [
+          ['08:12', 'Treasury · agent', L(['WFT-12044 returned to AP: beneficiary bank account changed 4 days ago.', 'WFT-12044 retournée aux fournisseurs : compte bancaire modifié il y a 4 jours.']), C(['High', 'Élevée'], 'risk')],
+          ['07:41', 'Tax · agent', L(['Withholding tax review opened on CFE-2026-084.', 'Revue de retenue à la source ouverte sur CFE-2026-084.']), C(['Medium', 'Moyenne'], 'warn')],
+          ['06:04', 'AP · agent', L(['Payment proposal ready for the campaign of 13 August.', 'Proposition de paiement prête pour la campagne du 13 août.']), C(['Action', 'Action'], 'info')],
+          ['Yest. 18:44', 'Odoo', L(['Bank statement import failed: insufficient access rights on BNK-SGC.', 'Échec d’import du relevé : droits insuffisants sur BNK-SGC.']), C(['High', 'Élevée'], 'risk')]
+        ],
+        notes: [[['Quiet by default', 'Silencieux par défaut'], ['Only approvals, failures and deadlines notify. Routine agent activity stays in the audit trail.', 'Seuls les approbations, échecs et échéances notifient. L’activité courante des agents reste dans la piste d’audit.']]]
+      },
+      settings: {
+        tiles: [[['Users', 'Utilisateurs'], '18', ['4 roles', '4 rôles']], [['Legal entities', 'Entités juridiques'], '3', ['2 currencies', '2 devises']], [['ERP connections', 'Connexions ERP'], '2', ['1 live, 1 simulator', '1 réelle, 1 simulateur']], [['Policy version', 'Version de politique'], 'v7', ['09/08/2026', '09/08/2026']]],
+        cols: [[['Setting', 'Paramètre'], 'l'], [['Value', 'Valeur'], 'l'], [['Scope', 'Portée'], 'l'], [['Changed', 'Modifié'], 'l'], [['Status', 'Statut'], 'l']],
+        rows: [
+          [L(['Accounting framework', 'Référentiel comptable']), 'SYSCOHADA ' + L(['révisé', 'révisé']), L(['Tenant', 'Client']), '12/01/2026', C(['Locked', 'Verrouillé'], 'mute')],
+          [L(['Functional currency', 'Devise fonctionnelle']), 'XAF', 'Kribi Agro-Industries', '12/01/2026', C(['Active', 'Actif'], 'ok')],
+          [L(['Tax regime', 'Régime fiscal']), L(['Cameroon — actual regime', 'Cameroun — régime du réel']), L(['Tenant', 'Client']), '12/01/2026', C(['Active', 'Actif'], 'ok')],
+          [L(['Fiscal year end', 'Clôture de l’exercice']), '31/12', L(['Tenant', 'Client']), '12/01/2026', C(['Locked', 'Verrouillé'], 'mute')],
+          [L(['Data residency', 'Hébergement des données']), 'EU-West · ' + L(['encrypted', 'chiffré']), L(['Tenant', 'Client']), '03/03/2026', C(['Active', 'Actif'], 'ok')]
+        ],
+        notes: [[['Tenant isolation', 'Isolation des clients'], ['Every query is scoped to the active tenant and legal entity. Switching tenant drops all cached data for the previous one.', 'Chaque requête est limitée au client et à l’entité active. Le changement de client purge les données en cache du précédent.']]]
+      }
+    };
+    const p = G[this.state.route] || G.agents;
+    return {
+      tiles: p.tiles.map(x => ({ label: L(x[0]), value: x[1], meta: L(x[2]) })),
+      cols: p.cols.map(c => ({ label: L(c[0]), style: 'font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#5b6b80;font-weight:600;text-align:' + (c[1] === 'r' ? 'right' : 'left') })),
+      grid: 'display:grid;grid-template-columns:repeat(' + p.cols.length + ',minmax(min(110px,100%),1fr));gap:12px;align-items:center;padding:10px 14px',
+      rows: p.rows.map((r, i) => ({
+        style: 'display:grid;grid-template-columns:repeat(' + p.cols.length + ',minmax(min(110px,100%),1fr));gap:12px;align-items:center;padding:10px 14px;border-top:1px solid rgba(11,21,36,.07);font-size:13px;' + (i % 2 ? 'background:rgba(11,21,36,.018)' : ''),
+        cells: r.map((c, j) => (typeof c === 'string'
+          ? { text: c, chip: null, style: 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1d2b3d;text-align:' + (p.cols[j][1] === 'r' ? 'right' : 'left') + ';' + (p.cols[j][1] === 'r' ? 'font-variant-numeric:tabular-nums;font-feature-settings:\'tnum\';font-family:"IBM Plex Mono",monospace;font-size:12.5px' : '') }
+          : { text: '', chip: c, style: 'min-width:0' }))
+      })),
+      notes: p.notes.map(n => ({ h: L(n[0]), p: L(n[1]) }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>
